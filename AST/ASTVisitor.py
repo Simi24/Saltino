@@ -72,12 +72,10 @@ class SaltinoASTVisitor(SaltinoVisitor):
         
         # Un blocco può contenere istruzioni e blocchi annidati
         for child in ctx.children:
-            if hasattr(child, 'getRuleIndex'):
-                rule_index = child.getRuleIndex()
-                if rule_index == SaltinoParser.RULE_istruzione:
-                    statements.append(self.visit(child))
-                elif rule_index == SaltinoParser.RULE_blocco:
-                    statements.append(self.visit(child))
+            if hasattr(child, 'getRuleIndex'):  # È un nodo grammaticale, non un token
+                visited = self.visit(child)
+                if visited is not None:
+                    statements.append(visited)
         
         return Block(statements, self._get_position(ctx))
     
@@ -91,7 +89,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
         elif ctx.return_stmt():
             return self.visit(ctx.return_stmt())
         else:
-            raise ValueError(f"Tipo di istruzione sconosciuto: {ctx.getText()}")
+            return None
     
     def visitAssegnamento(self, ctx: SaltinoParser.AssegnamentoContext):
         """Visita un assegnamento."""
@@ -103,7 +101,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
         elif ctx.condizione():
             value = self.visit(ctx.condizione())
         else:
-            raise ValueError("Assegnamento senza valore")
+            value = None
         
         return Assignment(variable, value, self._get_position(ctx))
     
@@ -115,7 +113,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
         # else è opzionale
         else_block = None
         if len(ctx.blocco()) > 1:
-            else_block = self.visit(ctx.blocco(1))  # Secondo blocco
+            else_block = self.visit(ctx.blocco(1))
         
         return IfStatement(condition, then_block, else_block, self._get_position(ctx))
     
@@ -127,7 +125,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
         elif ctx.condizione():
             value = self.visit(ctx.condizione())
         else:
-            raise ValueError("Return senza valore")
+            value = None
         
         return ReturnStatement(value, self._get_position(ctx))
     
@@ -196,12 +194,10 @@ class SaltinoASTVisitor(SaltinoVisitor):
         # Gli argomenti possono essere espressioni o condizioni
         for i in range(len(ctx.children)):
             child = ctx.children[i]
-            if hasattr(child, 'getRuleIndex'):
-                rule_index = child.getRuleIndex()
-                if rule_index == SaltinoParser.RULE_espressione:
-                    arguments.append(self.visit(child))
-                elif rule_index == SaltinoParser.RULE_condizione:
-                    arguments.append(self.visit(child))
+            if hasattr(child, 'getRuleIndex'):  # È un nodo grammaticale
+                visited = self.visit(child)
+                if visited is not None:
+                    arguments.append(visited)
         
         return arguments
     
@@ -235,7 +231,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
         return BinaryCondition(left, op_text, right, self._get_position(ctx))
     
     def visitNegazione(self, ctx: SaltinoParser.NegazioneContext):
-        """Visita negazione (!)."""
+        """Visita negazione logica (!)."""
         operand = self.visit(ctx.condizione())
         return UnaryCondition('!', operand, self._get_position(ctx))
     
@@ -243,19 +239,16 @@ class SaltinoASTVisitor(SaltinoVisitor):
         """Visita confronto tra espressioni."""
         left = self.visit(ctx.espressione(0))
         right = self.visit(ctx.espressione(1))
-        
         op_text = ctx.getChild(1).getText()
         return ComparisonCondition(left, op_text, right, self._get_position(ctx))
     
     def visitBooleano(self, ctx: SaltinoParser.BooleanoContext):
         """Visita letterale booleano."""
-        text = ctx.getText()
-        value = text == 'true'
+        value = ctx.getText() == 'true'
         return BooleanLiteral(value, self._get_position(ctx))
     
     def visitParentesiCondizione(self, ctx: SaltinoParser.ParentesiCondizioneContext):
         """Visita condizione tra parentesi."""
-        # Le parentesi non creano un nodo specifico, restituiamo solo la condizione interna
         return self.visit(ctx.condizione())
 
 
@@ -289,39 +282,37 @@ def print_ast(node: ASTNode, indent: int = 0) -> str:
     result = "  " * indent + str(node) + "\n"
     
     # Attraversa ricorsivamente i figli
-    if hasattr(node, 'functions'):  # Program
+    if hasattr(node, 'functions'):        
         for func in node.functions:
             result += print_ast(func, indent + 1)
     
-    elif hasattr(node, 'body'):  # Function
-        if hasattr(node, 'parameters'):
-            result += "  " * (indent + 1) + f"Parameters: {node.parameters}\n"
+    elif hasattr(node, 'body'):        
         result += print_ast(node.body, indent + 1)
     
-    elif hasattr(node, 'statements'):  # Block
+    elif hasattr(node, 'statements'):        
         for stmt in node.statements:
             result += print_ast(stmt, indent + 1)
     
-    elif hasattr(node, 'value') and hasattr(node, 'variable'):  # Assignment
+    elif hasattr(node, 'value') and hasattr(node, 'variable'):        
         result += print_ast(node.value, indent + 1)
     
-    elif hasattr(node, 'condition') and hasattr(node, 'then_block'):  # IfStatement
+    elif hasattr(node, 'condition') and hasattr(node, 'then_block'):        
         result += print_ast(node.condition, indent + 1)
         result += print_ast(node.then_block, indent + 1)
         if node.else_block:
             result += print_ast(node.else_block, indent + 1)
     
-    elif hasattr(node, 'value') and not hasattr(node, 'variable'):  # ReturnStatement
+    elif hasattr(node, 'value') and not hasattr(node, 'variable'):        
         result += print_ast(node.value, indent + 1)
     
-    elif hasattr(node, 'left') and hasattr(node, 'right'):  # Binary expressions/conditions
+    elif hasattr(node, 'left') and hasattr(node, 'right'):        
         result += print_ast(node.left, indent + 1)
         result += print_ast(node.right, indent + 1)
     
-    elif hasattr(node, 'operand'):  # Unary expressions/conditions
+    elif hasattr(node, 'operand'):        
         result += print_ast(node.operand, indent + 1)
     
-    elif hasattr(node, 'function') and hasattr(node, 'arguments'):  # FunctionCall
+    elif hasattr(node, 'function') and hasattr(node, 'arguments'):        
         result += print_ast(node.function, indent + 1)
         for arg in node.arguments:
             result += print_ast(arg, indent + 1)

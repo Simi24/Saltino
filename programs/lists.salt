@@ -1,0 +1,10 @@
+def main() {
+    return test_lists()
+}
+
+def test_lists() {
+    x = 1 :: []
+    y = 2 :: x
+    z = 3 :: y
+    return head(z) + head(tail(z))
+}

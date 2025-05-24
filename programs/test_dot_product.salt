@@ -1,0 +1,12 @@
+// Test version of dot_product.salt with specific values
+def main() {
+  return dot_product(3 :: 4 :: [], 2 :: 5 :: [])
+}
+
+def dot_product(xs, ys) {
+  if (xs == []) {
+    return 0
+  } else {
+    return (head(xs) * head(ys)) + dot_product(tail(xs), tail(ys))
+  }
+}

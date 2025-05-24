@@ -14,7 +14,7 @@ grammar Saltino;
 
 /**
  * Programma: sequenza non vuota di definizioni di funzioni
- * Deve esistere una funzione 'main'
+ * Deve esistere una funzione 'main' (può avere parametri)
  */
 programma: funzione+ EOF;
 
@@ -46,8 +46,8 @@ istruzione: assegnamento
 // Assegnamento: variabile = espressione/condizione
 assegnamento: ID '=' (espressione | condizione);
 
-// Condizione con 'then' obbligatorio e 'else' opzionale
-if_stmt: 'if' condizione 'then' blocco ('else' blocco)?;
+// Condizione if-else con condizione tra parentesi
+if_stmt: 'if' '(' condizione ')' blocco ('else' blocco)?;
 
 // Return di espressione o condizione
 return_stmt: 'return' (espressione | condizione);
@@ -66,13 +66,13 @@ return_stmt: 'return' (espressione | condizione);
  */
 espressione: espressione '(' argomenti? ')'                    # chiamataFunzione  // Associativa a destra
            | ('head' | 'tail') '(' espressione ')'            # headTail          // Operatori unari liste
-           | espressione '^' espressione                       # potenza           // Associativo a destra
+           | <assoc=right> espressione '^' espressione         # potenza           // Associativo a destra
            | ('+' | '-') espressione                           # unario            // Precedenza su binari
            | espressione ('*' | '/' | '%') espressione         # moltiplicazione   // Associativo a sinistra
            | espressione ('+' | '-') espressione               # addizione         // Associativo a sinistra
-           | espressione '::' espressione                      # cons              // Associativo a destra
+           | <assoc=right> espressione '::' espressione        # cons              // Associativo a destra
            | '[]'                                              # listaVuota        // Letterale lista vuota
-           | INT                                               # intero            // Letterale intero
+           | INT                                               # intero            // Litterale intero
            | ID                                                # identificatore    // Riferimento a variabile
            | '(' espressione ')'                               # parantesi         // Precedenza massima
            ;
