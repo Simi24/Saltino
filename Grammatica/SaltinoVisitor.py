@@ -99,6 +99,11 @@ class SaltinoVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by SaltinoParser#booleanoLiterale.
+    def visitBooleanoLiterale(self, ctx:SaltinoParser.BooleanoLiteraleContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by SaltinoParser#cons.
     def visitCons(self, ctx:SaltinoParser.ConsContext):
         return self.visitChildren(ctx)
@@ -111,6 +116,11 @@ class SaltinoVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by SaltinoParser#parentesiCondizione.
     def visitParentesiCondizione(self, ctx:SaltinoParser.ParentesiCondizioneContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by SaltinoParser#variabileBooleana.
+    def visitVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
         return self.visitChildren(ctx)
 
 
@@ -131,6 +141,11 @@ class SaltinoVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by SaltinoParser#negazione.
     def visitNegazione(self, ctx:SaltinoParser.NegazioneContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by SaltinoParser#espressioneCondizione.
+    def visitEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
         return self.visitChildren(ctx)
 
 

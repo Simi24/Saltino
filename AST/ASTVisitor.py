@@ -208,6 +208,11 @@ class SaltinoASTVisitor(SaltinoVisitor):
         value = int(ctx.INT().getText())
         return IntegerLiteral(value, self._get_position(ctx))
 
+    def visitBooleanoLiterale(self, ctx: SaltinoParser.BooleanoLiteraleContext):
+        """Visita letterale booleano nelle espressioni."""
+        value = ctx.getText() == 'true'
+        return BooleanLiteral(value, self._get_position(ctx))
+
     def visitIdentificatore(self, ctx: SaltinoParser.IdentificatoreContext):
         """Visita identificatore."""
         name = ctx.ID().getText()
@@ -248,6 +253,15 @@ class SaltinoASTVisitor(SaltinoVisitor):
         """Visita letterale booleano."""
         value = ctx.getText() == 'true'
         return BooleanLiteral(value, self._get_position(ctx))
+
+    def visitVariabileBooleana(self, ctx: SaltinoParser.VariabileBooleanaContext):
+        """Visita variabile booleana in una condizione."""
+        name = ctx.ID().getText()
+        return Identifier(name, self._get_position(ctx))
+
+    def visitEspressioneCondizione(self, ctx: SaltinoParser.EspressioneCondizioneContext):
+        """Visita espressione usata come condizione."""
+        return self.visit(ctx.espressione())
 
     def visitParentesiCondizione(self, ctx: SaltinoParser.ParentesiCondizioneContext):
         """Visita condizione tra parentesi."""

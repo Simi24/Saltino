@@ -13,7 +13,7 @@ def run_test(test_file, should_fail=False):
     """Esegue un singolo test e ritorna (success, output, error)"""
     try:
         result = subprocess.run(
-            [sys.executable, "run_saltino.py", str(test_file)],
+            [sys.executable, "iterative_interpreter.py", str(test_file)],
             capture_output=True,
             text=True,
             timeout=30

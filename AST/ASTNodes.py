@@ -15,13 +15,13 @@ Gerarchia delle classi:
     - UnaryExpression
     - FunctionCall
     - IntegerLiteral
+    - BooleanLiteral
     - Identifier
     - EmptyList
   - Condition
     - BinaryCondition
     - UnaryCondition
     - ComparisonCondition
-    - BooleanLiteral
 """
 
 from abc import ABC, abstractmethod
@@ -315,7 +315,7 @@ class ComparisonCondition(Condition):
         return f"ComparisonCondition({self.left} {self.operator} {self.right})"
 
 
-class BooleanLiteral(Condition):
+class BooleanLiteral(Expression):
     """Letterale booleano (true, false)."""
 
     def __init__(self, value: bool, position: Optional[SourcePosition] = None):

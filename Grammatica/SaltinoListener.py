@@ -170,6 +170,15 @@ class SaltinoListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by SaltinoParser#booleanoLiterale.
+    def enterBooleanoLiterale(self, ctx:SaltinoParser.BooleanoLiteraleContext):
+        pass
+
+    # Exit a parse tree produced by SaltinoParser#booleanoLiterale.
+    def exitBooleanoLiterale(self, ctx:SaltinoParser.BooleanoLiteraleContext):
+        pass
+
+
     # Enter a parse tree produced by SaltinoParser#cons.
     def enterCons(self, ctx:SaltinoParser.ConsContext):
         pass
@@ -194,6 +203,15 @@ class SaltinoListener(ParseTreeListener):
 
     # Exit a parse tree produced by SaltinoParser#parentesiCondizione.
     def exitParentesiCondizione(self, ctx:SaltinoParser.ParentesiCondizioneContext):
+        pass
+
+
+    # Enter a parse tree produced by SaltinoParser#variabileBooleana.
+    def enterVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
+        pass
+
+    # Exit a parse tree produced by SaltinoParser#variabileBooleana.
+    def exitVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
         pass
 
 
@@ -230,6 +248,15 @@ class SaltinoListener(ParseTreeListener):
 
     # Exit a parse tree produced by SaltinoParser#negazione.
     def exitNegazione(self, ctx:SaltinoParser.NegazioneContext):
+        pass
+
+
+    # Enter a parse tree produced by SaltinoParser#espressioneCondizione.
+    def enterEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
+        pass
+
+    # Exit a parse tree produced by SaltinoParser#espressioneCondizione.
+    def exitEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
         pass
 
 

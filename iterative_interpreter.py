@@ -394,8 +394,19 @@ class IterativeSaltinoInterpreter:
                 parent_frame.state['current_operand_index'] += 1
         elif parent_frame.frame_type == FrameType.CONDITION:
             # Un operando della condizione è stato valutato
-            parent_frame.state['operands_evaluated'].append(result)
-            parent_frame.state['current_operand_index'] += 1
+            if isinstance(parent_frame.node, FunctionCall):
+                # Caso speciale: chiamata di funzione usata come condizione
+                if not parent_frame.state.get('function_called', False):
+                    # Stiamo valutando un argomento
+                    parent_frame.state['arguments_evaluated'].append(result)
+                    parent_frame.state['current_arg_index'] += 1
+                else:
+                    # Il risultato della chiamata di funzione
+                    parent_frame.state['function_result'] = result
+            else:
+                # Operando normale di una condizione
+                parent_frame.state['operands_evaluated'].append(result)
+                parent_frame.state['current_operand_index'] += 1
         elif parent_frame.frame_type == FrameType.IF_STATEMENT:
             if not parent_frame.state['condition_evaluated']:
                 # La condizione è stata valutata
@@ -472,6 +483,9 @@ class IterativeSaltinoInterpreter:
 
         # Gestione dei diversi tipi di espressione
         if isinstance(node, IntegerLiteral):
+            frame.result = node.value
+            frame.completed = True
+        elif isinstance(node, BooleanLiteral):
             frame.result = node.value
             frame.completed = True
         elif isinstance(node, Identifier):
@@ -646,12 +660,25 @@ class IterativeSaltinoInterpreter:
         if isinstance(node, BooleanLiteral):
             frame.result = node.value
             frame.completed = True
+        elif isinstance(node, Identifier):
+            try:
+                value = frame.environment.get_variable(node.name)
+                # Verifica che il valore sia un booleano
+                if type(value) is not bool:
+                    raise SaltinoRuntimeError(f"Variable '{node.name}' used in condition must be boolean, got {type(value).__name__}")
+                frame.result = value
+                frame.completed = True
+            except SaltinoRuntimeError:
+                raise SaltinoRuntimeError(f"Undefined variable: {node.name}")
         elif isinstance(node, BinaryCondition):
             self._execute_binary_condition(frame)
         elif isinstance(node, UnaryCondition):
             self._execute_unary_condition(frame)
         elif isinstance(node, ComparisonCondition):
             self._execute_comparison_condition(frame)
+        elif isinstance(node, FunctionCall):
+            # Chiamata di funzione usata come condizione - deve restituire un booleano
+            self._execute_function_call_in_condition(frame)
         else:
             raise SaltinoRuntimeError(f"Unknown condition type: {type(node)}")
 
@@ -750,6 +777,70 @@ class IterativeSaltinoInterpreter:
                 raise SaltinoRuntimeError(
                     f"Unknown comparison operator: {comparison.operator}")
 
+            frame.completed = True
+
+    def _execute_function_call_in_condition(self, frame: ExecutionFrame):
+        """Esegue una chiamata di funzione usata come condizione."""
+        call = frame.node
+
+        if not frame.state.get('function_resolved', False):
+            # Risolviamo la funzione
+            if isinstance(call.function, Identifier):
+                try:
+                    function = frame.environment.get_function(call.function.name)
+                    frame.state['function'] = function
+                    frame.state['function_resolved'] = True
+                    frame.state['arguments_to_evaluate'] = call.arguments
+                    frame.state['arguments_evaluated'] = []
+                    frame.state['current_arg_index'] = 0
+                except SaltinoRuntimeError:
+                    raise SaltinoRuntimeError(f"Undefined function: {call.function.name}")
+            else:
+                raise SaltinoRuntimeError(f"Complex function expressions not supported")
+
+        # Valutiamo gli argomenti
+        args_evaluated = frame.state['arguments_evaluated']
+        current_index = frame.state['current_arg_index']
+        args_to_evaluate = frame.state['arguments_to_evaluate']
+
+        if current_index < len(args_to_evaluate):
+            # Valutiamo il prossimo argomento
+            arg = args_to_evaluate[current_index]
+            if self._is_condition_node(arg):
+                self.push_frame(FrameType.CONDITION, arg, frame.environment)
+            else:
+                self.push_frame(FrameType.EXPRESSION, arg, frame.environment)
+        elif not frame.state.get('function_called', False):
+            # Tutti gli argomenti sono stati valutati, chiamiamo la funzione
+            function = frame.state['function']
+
+            # Verifichiamo il numero di argomenti
+            if len(args_evaluated) != len(function.parameters):
+                raise SaltinoRuntimeError(
+                    f"Function '{function.name}' expects {len(function.parameters)} arguments, "
+                    f"got {len(args_evaluated)}"
+                )
+
+            # Creiamo un nuovo ambiente per la funzione
+            function_env = self._create_new_environment(self.global_env)
+
+            # Binding dei parametri
+            for param, arg in zip(function.parameters, args_evaluated):
+                function_env.define_variable(param, arg)
+
+            # Eseguiamo la funzione
+            func_frame = self.push_frame(FrameType.FUNCTION_CALL, function, function_env)
+            func_frame.state['function'] = function
+            func_frame.state['body_executed'] = False
+
+            frame.state['function_called'] = True
+        else:
+            # La funzione è stata chiamata, il risultato è stato impostato da _handle_child_result
+            result = frame.state.get('function_result')
+            # Verifichiamo che il risultato sia un booleano
+            if type(result) is not bool:
+                raise SaltinoRuntimeError(f"Function used in condition must return boolean, got {type(result).__name__}")
+            frame.result = result
             frame.completed = True
 
     def _execute_if_frame(self, frame: ExecutionFrame):

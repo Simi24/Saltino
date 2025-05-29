@@ -62,7 +62,7 @@ return_stmt: 'return' (espressione | condizione);
  * 5. mult/% - associativi a sinistra
  * 6. +/- binari - associativi a sinistra  
  * 7. :: (cons) - associativo a destra per costruire liste
- * 8. Elementi primari (letterali, ID, parentesi)
+ * 8. Elementi primari (letterali interi/booleani, liste vuote, ID, parentesi)
  */
 espressione: espressione '(' argomenti? ')'                    # chiamataFunzione  // Associativa a destra
            | ('head' | 'tail') '(' espressione ')'            # headTail          // Operatori unari liste
@@ -73,6 +73,7 @@ espressione: espressione '(' argomenti? ')'                    # chiamataFunzion
            | <assoc=right> espressione '::' espressione        # cons              // Associativo a destra
            | '[]'                                              # listaVuota        // Letterale lista vuota
            | INT                                               # intero            // Litterale intero
+           | ('true' | 'false')                                # booleanoLiterale  // Litterale booleano
            | ID                                                # identificatore    // Riferimento a variabile
            | '(' espressione ')'                               # parantesi         // Precedenza massima
            ;
@@ -96,6 +97,8 @@ condizione: condizione ('and' | 'or') condizione              # logico          
           | '!' condizione                                     # negazione        // Precedenza su and/or
           | espressione ('<=' | '<' | '==' | '>' | '>=') espressione  # confronto  // Non associativi
           | ('true' | 'false')                                 # booleano         // Letterali booleani
+          | ID                                                 # variabileBooleana // Variabile booleana
+          | espressione                                        # espressioneCondizione // Espressione che restituisce booleano
           | '(' condizione ')'                                 # parentesiCondizione // Precedenza massima
           ;
 
