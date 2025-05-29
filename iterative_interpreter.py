@@ -137,50 +137,59 @@ class IterativeSaltinoInterpreter:
 
         # Dispatch table per le operazioni binarie
         self.binary_operators = {
-            '+': lambda x, y: x + y,
-            '-': lambda x, y: x - y,
-            '*': lambda x, y: x * y,
+            '+': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a + b),
+            '-': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a - b),
+            '*': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a * b),
             '/': lambda x, y: self._safe_divide(x, y),
-            '%': lambda x, y: x % y,
-            '^': lambda x, y: x ** y,
+            '%': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a % b),
+            '^': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a ** b),
             '::': lambda x, y: self._cons(x, y),
         }
 
         # Dispatch table per le operazioni unarie
         self.unary_operators = {
-            '+': lambda x: +x,
-            '-': lambda x: -x,
+            '+': lambda x: self._unary_arithmetic_op(x, lambda a: +a),
+            '-': lambda x: self._unary_arithmetic_op(x, lambda a: -a),
             'head': lambda x: self._head(x),
             'tail': lambda x: self._tail(x),
         }
 
         # Dispatch table per gli operatori di confronto
         self.comparison_operators = {
-            '==': lambda x, y: x == y,
-            '!=': lambda x, y: x != y,
-            '<': lambda x, y: x < y,
-            '<=': lambda x, y: x <= y,
-            '>': lambda x, y: x > y,
-            '>=': lambda x, y: x >= y,
+            '==': lambda x, y: self._equality_comparison(x, y),
+            '!=': lambda x, y: self._comparison_op(x, y, lambda a, b: a != b),
+            '<': lambda x, y: self._comparison_op(x, y, lambda a, b: a < b),
+            '<=': lambda x, y: self._comparison_op(x, y, lambda a, b: a <= b),
+            '>': lambda x, y: self._comparison_op(x, y, lambda a, b: a > b),
+            '>=': lambda x, y: self._comparison_op(x, y, lambda a, b: a >= b),
         }
 
         # Dispatch table per le operazioni logiche
         self.logical_operators = {
-            'and': lambda x, y: x and y,
-            'or': lambda x, y: x or y,
+            'and': lambda x, y: self._logical_op(x, y, lambda a, b: a and b),
+            'or': lambda x, y: self._logical_op(x, y, lambda a, b: a or b),
         }
 
     def _safe_divide(self, x: Union[int, float], y: Union[int, float]) -> Union[int, float]:
         """Divisione sicura che controlla la divisione per zero."""
+        # Controllo di tipo: operatori aritmetici possono operare solo tra interi
+        if type(x) is not int or type(y) is not int:
+            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
         if y == 0:
             raise SaltinoRuntimeError("Division by zero")
-        return x / y
+        return x // y  # Divisione intera per mantenere il tipo intero
 
     def _cons(self, head: Any, tail: List[Any]) -> List[Any]:
         """Operatore cons (::) che aggiunge un elemento all'inizio di una lista."""
+        # Controllo di tipo: :: può operare solo tra un intero e una lista di interi
+        if type(head) is not int:
+            raise SaltinoRuntimeError(f"Cons operator expects an integer as first argument, got {type(head).__name__}")
         if not isinstance(tail, list):
-            raise SaltinoRuntimeError(
-                f"Cons operator expects a list as second argument, got {type(tail)}")
+            raise SaltinoRuntimeError(f"Cons operator expects a list as second argument, got {type(tail).__name__}")
+        # Verifica che tutti gli elementi della lista siano interi
+        for i, item in enumerate(tail):
+            if type(item) is not int:
+                raise SaltinoRuntimeError(f"Cons operator expects a list of integers, but element at index {i} is {type(item).__name__}")
         return [head] + tail
 
     def _head(self, lst: List[Any]) -> Any:
@@ -659,6 +668,11 @@ class IterativeSaltinoInterpreter:
         elif current_index == 1:
             # Short-circuit evaluation per and e or
             left_value = operands_evaluated[0]
+            
+            # Controllo di tipo per il primo operando
+            if type(left_value) is not bool:
+                raise SaltinoRuntimeError(f"Logical operators can only operate on boolean values, got {type(left_value).__name__}")
+            
             if condition.operator == 'and' and not left_value:
                 frame.result = False
                 frame.completed = True
@@ -700,6 +714,9 @@ class IterativeSaltinoInterpreter:
             operand_value = operands_evaluated[0]
 
             if condition.operator == '!':
+                # Controllo di tipo: negazione può operare solo su valori booleani
+                if type(operand_value) is not bool:
+                    raise SaltinoRuntimeError(f"Logical negation can only operate on boolean values, got {type(operand_value).__name__}")
                 frame.result = not operand_value
             else:
                 raise SaltinoRuntimeError(
@@ -811,6 +828,56 @@ class IterativeSaltinoInterpreter:
                     break
 
             frame.completed = True
+
+    def _arithmetic_op(self, x: Any, y: Any, operation) -> int:
+        """Esegue un'operazione aritmetica con controllo di tipo."""
+        # Controllo di tipo: operatori aritmetici possono operare solo tra interi
+        # Nota: isinstance(True, int) è True in Python, quindi controlliamo esplicitamente bool
+        if type(x) is not int or type(y) is not int:
+            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
+        return operation(x, y)
+
+    def _unary_arithmetic_op(self, x: Any, operation) -> int:
+        """Esegue un'operazione aritmetica unaria con controllo di tipo."""
+        # Controllo di tipo: operatori aritmetici possono operare solo su interi
+        if type(x) is not int:
+            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__}")
+        return operation(x)
+
+    def _comparison_op(self, x: Any, y: Any, operation) -> bool:
+        """Esegue un'operazione di confronto con controllo di tipo."""
+        # Controllo di tipo: operatori di confronto (eccetto ==) possono operare solo su interi
+        if type(x) is not int or type(y) is not int:
+            raise SaltinoRuntimeError(f"Comparison operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
+        return operation(x, y)
+
+    def _equality_comparison(self, x: Any, y: Any) -> bool:
+        """Esegue il confronto di uguaglianza con regole speciali."""
+        # == può operare su interi o tra liste di interi, dove una deve essere []
+        if type(x) is int and type(y) is int:
+            return x == y
+        elif isinstance(x, list) and isinstance(y, list):
+            # Almeno una delle due liste deve essere vuota
+            if len(x) == 0 or len(y) == 0:
+                # Verifica che entrambe siano liste di interi
+                for item in x:
+                    if type(item) is not int:
+                        raise SaltinoRuntimeError(f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in first list")
+                for item in y:
+                    if type(item) is not int:
+                        raise SaltinoRuntimeError(f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in second list")
+                return x == y
+            else:
+                raise SaltinoRuntimeError("Equality comparison between lists is only allowed when at least one list is empty []")
+        else:
+            raise SaltinoRuntimeError(f"Equality comparison can only operate on integers or lists of integers, got {type(x).__name__} and {type(y).__name__}")
+
+    def _logical_op(self, x: Any, y: Any, operation) -> bool:
+        """Esegue un'operazione logica con controllo di tipo."""
+        # Controllo di tipo: connettivi logici possono operare solo tra valori booleani
+        if type(x) is not bool or type(y) is not bool:
+            raise SaltinoRuntimeError(f"Logical operators can only operate on boolean values, got {type(x).__name__} and {type(y).__name__}")
+        return operation(x, y)
 
 
 def exec_saltino_iterative(filename: str) -> Any:
