@@ -197,66 +197,57 @@ class SaltinoListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by SaltinoParser#parentesiCondizione.
-    def enterParentesiCondizione(self, ctx:SaltinoParser.ParentesiCondizioneContext):
+    # Enter a parse tree produced by SaltinoParser#condizione.
+    def enterCondizione(self, ctx:SaltinoParser.CondizioneContext):
         pass
 
-    # Exit a parse tree produced by SaltinoParser#parentesiCondizione.
-    def exitParentesiCondizione(self, ctx:SaltinoParser.ParentesiCondizioneContext):
-        pass
-
-
-    # Enter a parse tree produced by SaltinoParser#variabileBooleana.
-    def enterVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
-        pass
-
-    # Exit a parse tree produced by SaltinoParser#variabileBooleana.
-    def exitVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
+    # Exit a parse tree produced by SaltinoParser#condizione.
+    def exitCondizione(self, ctx:SaltinoParser.CondizioneContext):
         pass
 
 
-    # Enter a parse tree produced by SaltinoParser#booleano.
-    def enterBooleano(self, ctx:SaltinoParser.BooleanoContext):
+    # Enter a parse tree produced by SaltinoParser#condOr.
+    def enterCondOr(self, ctx:SaltinoParser.CondOrContext):
         pass
 
-    # Exit a parse tree produced by SaltinoParser#booleano.
-    def exitBooleano(self, ctx:SaltinoParser.BooleanoContext):
-        pass
-
-
-    # Enter a parse tree produced by SaltinoParser#logico.
-    def enterLogico(self, ctx:SaltinoParser.LogicoContext):
-        pass
-
-    # Exit a parse tree produced by SaltinoParser#logico.
-    def exitLogico(self, ctx:SaltinoParser.LogicoContext):
+    # Exit a parse tree produced by SaltinoParser#condOr.
+    def exitCondOr(self, ctx:SaltinoParser.CondOrContext):
         pass
 
 
-    # Enter a parse tree produced by SaltinoParser#confronto.
-    def enterConfronto(self, ctx:SaltinoParser.ConfrontoContext):
+    # Enter a parse tree produced by SaltinoParser#condAnd.
+    def enterCondAnd(self, ctx:SaltinoParser.CondAndContext):
         pass
 
-    # Exit a parse tree produced by SaltinoParser#confronto.
-    def exitConfronto(self, ctx:SaltinoParser.ConfrontoContext):
-        pass
-
-
-    # Enter a parse tree produced by SaltinoParser#negazione.
-    def enterNegazione(self, ctx:SaltinoParser.NegazioneContext):
-        pass
-
-    # Exit a parse tree produced by SaltinoParser#negazione.
-    def exitNegazione(self, ctx:SaltinoParser.NegazioneContext):
+    # Exit a parse tree produced by SaltinoParser#condAnd.
+    def exitCondAnd(self, ctx:SaltinoParser.CondAndContext):
         pass
 
 
-    # Enter a parse tree produced by SaltinoParser#espressioneCondizione.
-    def enterEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
+    # Enter a parse tree produced by SaltinoParser#condNot.
+    def enterCondNot(self, ctx:SaltinoParser.CondNotContext):
         pass
 
-    # Exit a parse tree produced by SaltinoParser#espressioneCondizione.
-    def exitEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
+    # Exit a parse tree produced by SaltinoParser#condNot.
+    def exitCondNot(self, ctx:SaltinoParser.CondNotContext):
+        pass
+
+
+    # Enter a parse tree produced by SaltinoParser#condAtom.
+    def enterCondAtom(self, ctx:SaltinoParser.CondAtomContext):
+        pass
+
+    # Exit a parse tree produced by SaltinoParser#condAtom.
+    def exitCondAtom(self, ctx:SaltinoParser.CondAtomContext):
+        pass
+
+
+    # Enter a parse tree produced by SaltinoParser#relop.
+    def enterRelop(self, ctx:SaltinoParser.RelopContext):
+        pass
+
+    # Exit a parse tree produced by SaltinoParser#relop.
+    def exitRelop(self, ctx:SaltinoParser.RelopContext):
         pass
 
 

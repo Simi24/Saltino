@@ -82,25 +82,49 @@ espressione: espressione '(' argomenti? ')'                    # chiamataFunzion
 argomenti: (espressione | condizione) (',' (espressione | condizione))*;
 
 /**
- * CONDIZIONI - Gerarchia di precedenza (dal più alto al più basso):
+ * CONDIZIONI - Gerarchia di precedenza ristrutturata:
  * 
- * 1. ! (negazione) - precedenza su and/or
- * 2. Operatori di confronto - non associativi
- * 3. and - associativo a sinistra, precedenza su or
- * 4. or - associativo a sinistra, precedenza più bassa
+ * Livelli di precedenza (dal più basso al più alto):
+ * 1. OR - precedenza più bassa, associativo a sinistra
+ * 2. AND - precedenza media, associativo a sinistra  
+ * 3. NOT - precedenza alta, operatore unario
+ * 4. Condizioni atomiche - precedenza più alta (confronti, letterali, variabili, parentesi)
  * 
  * Note sui tipi per i confronti:
  * - Operatori <, <=, >, >= : solo interi
  * - Operatore == : interi o (lista vs [])
  */
-condizione: condizione ('and' | 'or') condizione              # logico           // and ha prec. su or
-          | '!' condizione                                     # negazione        // Precedenza su and/or
-          | espressione ('<=' | '<' | '==' | '>' | '>=') espressione  # confronto  // Non associativi
-          | ('true' | 'false')                                 # booleano         // Letterali booleani
-          | ID                                                 # variabileBooleana // Variabile booleana
-          | espressione                                        # espressioneCondizione // Espressione che restituisce booleano
-          | '(' condizione ')'                                 # parentesiCondizione // Precedenza massima
-          ;
+
+// Punto di ingresso per una condizione booleana
+condizione: condOr;
+
+// Livello 1: OR (precedenza più bassa)
+condOr
+  : condAnd ('or' condAnd)*    // associativo a sinistra
+  ;
+
+// Livello 2: AND
+condAnd
+  : condNot ('and' condNot)*   // associativo a sinistra
+  ;
+
+// Livello 3: NOT
+condNot
+  : '!' condNot                // unario
+  | condAtom                   // livello successivo
+  ;
+
+// Livello 4: condizioni atomiche (più forte)
+condAtom
+  : espressione relop espressione
+  | 'true'
+  | 'false'
+  | ID
+  | '(' condizione ')'         // parentesi per override
+  ;
+
+// Operatori di confronto
+relop: '<=' | '<' | '==' | '>' | '>=' ;
 
 // ========== TOKEN LESSICALI ==========
 

@@ -114,38 +114,33 @@ class SaltinoVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#parentesiCondizione.
-    def visitParentesiCondizione(self, ctx:SaltinoParser.ParentesiCondizioneContext):
+    # Visit a parse tree produced by SaltinoParser#condizione.
+    def visitCondizione(self, ctx:SaltinoParser.CondizioneContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#variabileBooleana.
-    def visitVariabileBooleana(self, ctx:SaltinoParser.VariabileBooleanaContext):
+    # Visit a parse tree produced by SaltinoParser#condOr.
+    def visitCondOr(self, ctx:SaltinoParser.CondOrContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#booleano.
-    def visitBooleano(self, ctx:SaltinoParser.BooleanoContext):
+    # Visit a parse tree produced by SaltinoParser#condAnd.
+    def visitCondAnd(self, ctx:SaltinoParser.CondAndContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#logico.
-    def visitLogico(self, ctx:SaltinoParser.LogicoContext):
+    # Visit a parse tree produced by SaltinoParser#condNot.
+    def visitCondNot(self, ctx:SaltinoParser.CondNotContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#confronto.
-    def visitConfronto(self, ctx:SaltinoParser.ConfrontoContext):
+    # Visit a parse tree produced by SaltinoParser#condAtom.
+    def visitCondAtom(self, ctx:SaltinoParser.CondAtomContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by SaltinoParser#negazione.
-    def visitNegazione(self, ctx:SaltinoParser.NegazioneContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by SaltinoParser#espressioneCondizione.
-    def visitEspressioneCondizione(self, ctx:SaltinoParser.EspressioneCondizioneContext):
+    # Visit a parse tree produced by SaltinoParser#relop.
+    def visitRelop(self, ctx:SaltinoParser.RelopContext):
         return self.visitChildren(ctx)
 
 

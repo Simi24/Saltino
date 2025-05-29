@@ -174,7 +174,8 @@ class IterativeSaltinoInterpreter:
         """Divisione sicura che controlla la divisione per zero."""
         # Controllo di tipo: operatori aritmetici possono operare solo tra interi
         if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
+            raise SaltinoRuntimeError(
+                f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
         if y == 0:
             raise SaltinoRuntimeError("Division by zero")
         return x // y  # Divisione intera per mantenere il tipo intero
@@ -183,13 +184,16 @@ class IterativeSaltinoInterpreter:
         """Operatore cons (::) che aggiunge un elemento all'inizio di una lista."""
         # Controllo di tipo: :: può operare solo tra un intero e una lista di interi
         if type(head) is not int:
-            raise SaltinoRuntimeError(f"Cons operator expects an integer as first argument, got {type(head).__name__}")
+            raise SaltinoRuntimeError(
+                f"Cons operator expects an integer as first argument, got {type(head).__name__}")
         if not isinstance(tail, list):
-            raise SaltinoRuntimeError(f"Cons operator expects a list as second argument, got {type(tail).__name__}")
+            raise SaltinoRuntimeError(
+                f"Cons operator expects a list as second argument, got {type(tail).__name__}")
         # Verifica che tutti gli elementi della lista siano interi
         for i, item in enumerate(tail):
             if type(item) is not int:
-                raise SaltinoRuntimeError(f"Cons operator expects a list of integers, but element at index {i} is {type(item).__name__}")
+                raise SaltinoRuntimeError(
+                    f"Cons operator expects a list of integers, but element at index {i} is {type(item).__name__}")
         return [head] + tail
 
     def _head(self, lst: List[Any]) -> Any:
@@ -665,7 +669,8 @@ class IterativeSaltinoInterpreter:
                 value = frame.environment.get_variable(node.name)
                 # Verifica che il valore sia un booleano
                 if type(value) is not bool:
-                    raise SaltinoRuntimeError(f"Variable '{node.name}' used in condition must be boolean, got {type(value).__name__}")
+                    raise SaltinoRuntimeError(
+                        f"Variable '{node.name}' used in condition must be boolean, got {type(value).__name__}")
                 frame.result = value
                 frame.completed = True
             except SaltinoRuntimeError:
@@ -695,11 +700,12 @@ class IterativeSaltinoInterpreter:
         elif current_index == 1:
             # Short-circuit evaluation per and e or
             left_value = operands_evaluated[0]
-            
+
             # Controllo di tipo per il primo operando
             if type(left_value) is not bool:
-                raise SaltinoRuntimeError(f"Logical operators can only operate on boolean values, got {type(left_value).__name__}")
-            
+                raise SaltinoRuntimeError(
+                    f"Logical operators can only operate on boolean values, got {type(left_value).__name__}")
+
             if condition.operator == 'and' and not left_value:
                 frame.result = False
                 frame.completed = True
@@ -743,7 +749,8 @@ class IterativeSaltinoInterpreter:
             if condition.operator == '!':
                 # Controllo di tipo: negazione può operare solo su valori booleani
                 if type(operand_value) is not bool:
-                    raise SaltinoRuntimeError(f"Logical negation can only operate on boolean values, got {type(operand_value).__name__}")
+                    raise SaltinoRuntimeError(
+                        f"Logical negation can only operate on boolean values, got {type(operand_value).__name__}")
                 frame.result = not operand_value
             else:
                 raise SaltinoRuntimeError(
@@ -787,16 +794,19 @@ class IterativeSaltinoInterpreter:
             # Risolviamo la funzione
             if isinstance(call.function, Identifier):
                 try:
-                    function = frame.environment.get_function(call.function.name)
+                    function = frame.environment.get_function(
+                        call.function.name)
                     frame.state['function'] = function
                     frame.state['function_resolved'] = True
                     frame.state['arguments_to_evaluate'] = call.arguments
                     frame.state['arguments_evaluated'] = []
                     frame.state['current_arg_index'] = 0
                 except SaltinoRuntimeError:
-                    raise SaltinoRuntimeError(f"Undefined function: {call.function.name}")
+                    raise SaltinoRuntimeError(
+                        f"Undefined function: {call.function.name}")
             else:
-                raise SaltinoRuntimeError(f"Complex function expressions not supported")
+                raise SaltinoRuntimeError(
+                    f"Complex function expressions not supported")
 
         # Valutiamo gli argomenti
         args_evaluated = frame.state['arguments_evaluated']
@@ -829,7 +839,8 @@ class IterativeSaltinoInterpreter:
                 function_env.define_variable(param, arg)
 
             # Eseguiamo la funzione
-            func_frame = self.push_frame(FrameType.FUNCTION_CALL, function, function_env)
+            func_frame = self.push_frame(
+                FrameType.FUNCTION_CALL, function, function_env)
             func_frame.state['function'] = function
             func_frame.state['body_executed'] = False
 
@@ -839,7 +850,8 @@ class IterativeSaltinoInterpreter:
             result = frame.state.get('function_result')
             # Verifichiamo che il risultato sia un booleano
             if type(result) is not bool:
-                raise SaltinoRuntimeError(f"Function used in condition must return boolean, got {type(result).__name__}")
+                raise SaltinoRuntimeError(
+                    f"Function used in condition must return boolean, got {type(result).__name__}")
             frame.result = result
             frame.completed = True
 
@@ -925,21 +937,24 @@ class IterativeSaltinoInterpreter:
         # Controllo di tipo: operatori aritmetici possono operare solo tra interi
         # Nota: isinstance(True, int) è True in Python, quindi controlliamo esplicitamente bool
         if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
+            raise SaltinoRuntimeError(
+                f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
         return operation(x, y)
 
     def _unary_arithmetic_op(self, x: Any, operation) -> int:
         """Esegue un'operazione aritmetica unaria con controllo di tipo."""
         # Controllo di tipo: operatori aritmetici possono operare solo su interi
         if type(x) is not int:
-            raise SaltinoRuntimeError(f"Arithmetic operators can only operate on integers, got {type(x).__name__}")
+            raise SaltinoRuntimeError(
+                f"Arithmetic operators can only operate on integers, got {type(x).__name__}")
         return operation(x)
 
     def _comparison_op(self, x: Any, y: Any, operation) -> bool:
         """Esegue un'operazione di confronto con controllo di tipo."""
         # Controllo di tipo: operatori di confronto (eccetto ==) possono operare solo su interi
         if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(f"Comparison operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
+            raise SaltinoRuntimeError(
+                f"Comparison operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
         return operation(x, y)
 
     def _equality_comparison(self, x: Any, y: Any) -> bool:
@@ -953,21 +968,26 @@ class IterativeSaltinoInterpreter:
                 # Verifica che entrambe siano liste di interi
                 for item in x:
                     if type(item) is not int:
-                        raise SaltinoRuntimeError(f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in first list")
+                        raise SaltinoRuntimeError(
+                            f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in first list")
                 for item in y:
                     if type(item) is not int:
-                        raise SaltinoRuntimeError(f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in second list")
+                        raise SaltinoRuntimeError(
+                            f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in second list")
                 return x == y
             else:
-                raise SaltinoRuntimeError("Equality comparison between lists is only allowed when at least one list is empty []")
+                raise SaltinoRuntimeError(
+                    "Equality comparison between lists is only allowed when at least one list is empty []")
         else:
-            raise SaltinoRuntimeError(f"Equality comparison can only operate on integers or lists of integers, got {type(x).__name__} and {type(y).__name__}")
+            raise SaltinoRuntimeError(
+                f"Equality comparison can only operate on integers or lists of integers, got {type(x).__name__} and {type(y).__name__}")
 
     def _logical_op(self, x: Any, y: Any, operation) -> bool:
         """Esegue un'operazione logica con controllo di tipo."""
         # Controllo di tipo: connettivi logici possono operare solo tra valori booleani
         if type(x) is not bool or type(y) is not bool:
-            raise SaltinoRuntimeError(f"Logical operators can only operate on boolean values, got {type(x).__name__} and {type(y).__name__}")
+            raise SaltinoRuntimeError(
+                f"Logical operators can only operate on boolean values, got {type(x).__name__} and {type(y).__name__}")
         return operation(x, y)
 
 

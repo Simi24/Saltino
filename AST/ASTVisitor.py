@@ -229,43 +229,78 @@ class SaltinoASTVisitor(SaltinoVisitor):
 
     # ==================== CONDIZIONI ====================
 
-    def visitLogico(self, ctx: SaltinoParser.LogicoContext):
-        """Visita operatori logici (and, or)."""
-        left = self.visit(ctx.condizione(0))
-        right = self.visit(ctx.condizione(1))
+    def visitCondizione(self, ctx: SaltinoParser.CondizioneContext):
+        """Visita il punto di ingresso per le condizioni."""
+        return self.visit(ctx.condOr())
 
-        op_text = ctx.getChild(1).getText()
-        return BinaryCondition(left, op_text, right, self._get_position(ctx))
+    def visitCondOr(self, ctx: SaltinoParser.CondOrContext):
+        """Visita operatore logico OR (precedenza più bassa)."""
+        # condOr: condAnd ('or' condAnd)*
+        result = self.visit(ctx.condAnd(0))  # Primo operando
+        
+        # Se ci sono più operandi, costruisci una catena di OR associativi a sinistra
+        for i in range(1, len(ctx.condAnd())):
+            right = self.visit(ctx.condAnd(i))
+            result = BinaryCondition(result, 'or', right, self._get_position(ctx))
+        
+        return result
 
-    def visitNegazione(self, ctx: SaltinoParser.NegazioneContext):
-        """Visita negazione logica (!)."""
-        operand = self.visit(ctx.condizione())
-        return UnaryCondition('!', operand, self._get_position(ctx))
+    def visitCondAnd(self, ctx: SaltinoParser.CondAndContext):
+        """Visita operatore logico AND."""
+        # condAnd: condNot ('and' condNot)*
+        result = self.visit(ctx.condNot(0))  # Primo operando
+        
+        # Se ci sono più operandi, costruisci una catena di AND associativi a sinistra
+        for i in range(1, len(ctx.condNot())):
+            right = self.visit(ctx.condNot(i))
+            result = BinaryCondition(result, 'and', right, self._get_position(ctx))
+        
+        return result
 
-    def visitConfronto(self, ctx: SaltinoParser.ConfrontoContext):
-        """Visita confronto tra espressioni."""
-        left = self.visit(ctx.espressione(0))
-        right = self.visit(ctx.espressione(1))
-        op_text = ctx.getChild(1).getText()
-        return ComparisonCondition(left, op_text, right, self._get_position(ctx))
+    def visitCondNot(self, ctx: SaltinoParser.CondNotContext):
+        """Visita negazione logica NOT."""
+        # condNot: '!' condNot | condAtom
+        if ctx.getText().startswith('!'):
+            # È una negazione
+            operand = self.visit(ctx.condNot())
+            return UnaryCondition('!', operand, self._get_position(ctx))
+        else:
+            # È un atomo
+            return self.visit(ctx.condAtom())
 
-    def visitBooleano(self, ctx: SaltinoParser.BooleanoContext):
-        """Visita letterale booleano."""
-        value = ctx.getText() == 'true'
-        return BooleanLiteral(value, self._get_position(ctx))
+    def visitCondAtom(self, ctx: SaltinoParser.CondAtomContext):
+        """Visita condizioni atomiche (precedenza più alta)."""
+        # condAtom: espressione relop espressione | 'true' | 'false' | ID | '(' condizione ')'
+        
+        if ctx.relop():
+            # È un confronto: espressione relop espressione
+            left = self.visit(ctx.espressione(0))
+            right = self.visit(ctx.espressione(1))
+            op_text = self.visit(ctx.relop())
+            return ComparisonCondition(left, op_text, right, self._get_position(ctx))
+        
+        elif ctx.getText() == 'true':
+            return BooleanLiteral(True, self._get_position(ctx))
+        
+        elif ctx.getText() == 'false':
+            return BooleanLiteral(False, self._get_position(ctx))
+        
+        elif ctx.ID():
+            # Variabile booleana
+            name = ctx.ID().getText()
+            return Identifier(name, self._get_position(ctx))
+        
+        elif ctx.condizione():
+            # Parentesi: '(' condizione ')'
+            return self.visit(ctx.condizione())
+        
+        else:
+            raise ValueError(f"Tipo di condizione atomica non riconosciuto: {ctx.getText()}")
 
-    def visitVariabileBooleana(self, ctx: SaltinoParser.VariabileBooleanaContext):
-        """Visita variabile booleana in una condizione."""
-        name = ctx.ID().getText()
-        return Identifier(name, self._get_position(ctx))
-
-    def visitEspressioneCondizione(self, ctx: SaltinoParser.EspressioneCondizioneContext):
-        """Visita espressione usata come condizione."""
-        return self.visit(ctx.espressione())
-
-    def visitParentesiCondizione(self, ctx: SaltinoParser.ParentesiCondizioneContext):
-        """Visita condizione tra parentesi."""
-        return self.visit(ctx.condizione())
+    def visitRelop(self, ctx: SaltinoParser.RelopContext):
+        """Visita operatori di confronto."""
+        # relop: '<=' | '<' | '==' | '>' | '>='
+        return ctx.getText()
 
 
 # ==================== UTILITY FUNCTIONS ====================
