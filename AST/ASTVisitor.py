@@ -8,14 +8,13 @@ utilizzando le classi definite in ASTNodes.py.
 from Grammatica.SaltinoParser import SaltinoParser
 from Grammatica.SaltinoVisitor import SaltinoVisitor
 from .ASTNodes import *
-from antlr4 import ParseTreeVisitor
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # TODO: Add type checking for the visitor methods
-# TODO: Add error handling for unsupported constructs
+# TODO: Add error handling
 # TODO: Add scope management for variables and functions
 
 class SaltinoASTVisitor(SaltinoVisitor):
@@ -41,14 +40,14 @@ class SaltinoASTVisitor(SaltinoVisitor):
         """Visita il programma principale."""
         functions = []
         for func_ctx in ctx.funzione():
-            print(f"Visiting function: {func_ctx.getText()}")
+            # print(f"Visiting function: {func_ctx.getText()}")
             functions.append(self.visitFunzione(func_ctx))
         return Program(functions, self._get_position(ctx))
 
     def visitFunzione(self, ctx: SaltinoParser.FunzioneContext):
         """Visita una definizione di funzione."""
         name = ctx.ID().getText()
-        print(f"Visiting function definition: {name}")
+        # print(f"Visiting function definition: {name}")
 
         # Parametri (opzionali)
         parameters = []

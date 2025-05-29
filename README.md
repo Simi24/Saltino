@@ -29,6 +29,5 @@ If you need to modify the Saltino language grammar:
 1. Navigate to the `Grammatica/` directory
 2. Edit the `Saltino.g4` file with your grammar changes
 3. Follow the instruction in the `Grammatica/README.md` to regenerate the parser files
-   ```
 
 This will regenerate all necessary parser files using ANTLR4.

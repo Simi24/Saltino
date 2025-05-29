@@ -6,6 +6,6 @@ def increment(x) {
   return x + 1
 }
 
-def main(x) {
-  return double(increment(x))
+def main() {
+  return double(increment(5))
 }
