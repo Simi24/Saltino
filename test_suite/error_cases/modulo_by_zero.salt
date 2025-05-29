@@ -1,0 +1,6 @@
+// Test di modulo per zero
+def main() {
+    x = 15
+    y = 0
+    return x % y  // Dovrebbe generare errore di runtime
+}

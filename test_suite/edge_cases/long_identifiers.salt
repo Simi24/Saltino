@@ -1,0 +1,11 @@
+// Test con identificatori molto lunghi
+def main() {
+    very_long_variable_name_that_tests_identifier_limits = 42
+    another_extremely_long_identifier_for_testing_purposes = 58
+    return very_long_variable_name_that_tests_identifier_limits + another_extremely_long_identifier_for_testing_purposes
+}
+
+def function_with_extremely_long_name_for_testing_identifier_parsing(parameter_with_very_long_name_for_comprehensive_testing) {
+    local_variable_with_incredibly_long_name_to_test_limits = parameter_with_very_long_name_for_comprehensive_testing * 2
+    return local_variable_with_incredibly_long_name_to_test_limits
+}

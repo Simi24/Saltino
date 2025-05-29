@@ -1,0 +1,12 @@
+// Test di ricorsione profonda
+def main() {
+    return deep_recursion(100)
+}
+
+def deep_recursion(n) {
+    if (n <= 0) {
+        return 0
+    } else {
+        return 1 + deep_recursion(n - 1)
+    }
+}

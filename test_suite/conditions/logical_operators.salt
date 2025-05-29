@@ -1,0 +1,39 @@
+// Test di operatori logici
+def main() {
+    result = 0
+    
+    // Test AND
+    if (true and true) {
+        result = result + 1
+    }
+    
+    if (true and false) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    // Test OR
+    if (false or true) {
+        result = result + 1
+    }
+    
+    if (false or false) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    // Test negazione
+    if (!false) {
+        result = result + 1
+    }
+    
+    if (!true) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    return result
+}

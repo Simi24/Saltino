@@ -1,0 +1,4 @@
+// Test senza funzione main - dovrebbe generare errore
+def helper() {
+    return 42
+}

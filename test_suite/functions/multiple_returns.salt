@@ -1,0 +1,17 @@
+// Test con return multipli in if-else
+def main() {
+    return test_multiple_returns(10)
+}
+
+def test_multiple_returns(n) {
+    if (n > 5) {
+        if (n > 15) {
+            return 1
+        } else {
+            return 2
+        }
+    } else {
+        return 3
+    }
+    return 4  // Non dovrebbe mai essere raggiunto
+}

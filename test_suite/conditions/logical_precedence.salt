@@ -1,0 +1,28 @@
+// Test di precedenza dei connettivi logici (and ha precedenza su or)
+def main() {
+    result = 0
+    
+    // Test: true or false and false = true or (false and false) = true or false = true
+    if (true or false and false) {
+        result = result + 1
+    }
+    
+    // Test: false and true or true = (false and true) or true = false or true = true
+    if (false and true or true) {
+        result = result + 1
+    }
+    
+    // Test con negazione: !false and true = (!false) and true = true and true = true
+    if (!false and true) {
+        result = result + 1
+    }
+    
+    // Test: !true or false = (!true) or false = false or false = false
+    if (!true or false) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    return result
+}

@@ -1,0 +1,4 @@
+// Test più semplice possibile - funzione main che ritorna un intero
+def main() {
+    return 42
+}

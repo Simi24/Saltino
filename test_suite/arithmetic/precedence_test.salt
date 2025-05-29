@@ -1,0 +1,12 @@
+// Test di precedenza degli operatori
+def main() {
+    // Test: 2 + 3 * 4 = 2 + 12 = 14
+    result1 = 2 + 3 * 4
+    // Test: (2 + 3) * 4 = 5 * 4 = 20
+    result2 = (2 + 3) * 4
+    // Test: 10 - 6 / 2 = 10 - 3 = 7
+    result3 = 10 - 6 / 2
+    // Test: 15 % 4 + 2 = 3 + 2 = 5
+    result4 = 15 % 4 + 2
+    return result1 + result2 + result3 + result4
+}

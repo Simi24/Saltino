@@ -1,0 +1,16 @@
+// Test di shadowing delle variabili
+def main() {
+    x = 10
+    result = x  // result = 10
+    {
+        x = 20  // Nasconde la x esterna
+        result = result + x  // result = 10 + 20 = 30
+        {
+            x = 30  // Nasconde la x del blocco esterno
+            result = result + x  // result = 30 + 30 = 60
+        }
+        result = result + x  // x qui vale 20, result = 60 + 20 = 80
+    }
+    result = result + x  // x qui vale 10, result = 80 + 10 = 90
+    return result
+}

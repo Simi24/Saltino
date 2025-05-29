@@ -1,0 +1,13 @@
+// Test di chiamata a funzione con espressione come nome
+def main() {
+    f = get_function()
+    return f(5)
+}
+
+def get_function() {
+    return add_one  // Restituisce una funzione
+}
+
+def add_one(x) {
+    return x + 1
+}

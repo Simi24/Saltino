@@ -1,0 +1,12 @@
+// Test con funzioni duplicate - dovrebbe generare errore
+def main() {
+    return helper()
+}
+
+def helper() {
+    return 10
+}
+
+def helper() {  // Funzione duplicata
+    return 20
+}

@@ -1,0 +1,10 @@
+// Test di potenze (associativo a destra)
+def main() {
+    // 2^3^2 deve essere interpretato come 2^(3^2) = 2^9 = 512
+    result1 = 2 ^ 3 ^ 2
+    // Test con parentesi esplicite
+    result2 = (2 ^ 3) ^ 2
+    // Test di precedenza: 2 + 3 ^ 2 = 2 + 9 = 11
+    result3 = 2 + 3 ^ 2
+    return result1 + result2 + result3
+}

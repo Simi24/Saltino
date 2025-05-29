@@ -1,0 +1,6 @@
+// Test di divisione per zero
+def main() {
+    x = 10
+    y = 0
+    return x / y  // Dovrebbe generare errore di runtime
+}

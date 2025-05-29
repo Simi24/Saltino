@@ -1,0 +1,9 @@
+// Test con solo lista vuota
+def main() {
+    list = []
+    if (list == []) {
+        return 1
+    } else {
+        return 0
+    }
+}

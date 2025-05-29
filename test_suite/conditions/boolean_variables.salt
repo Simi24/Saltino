@@ -1,0 +1,19 @@
+// Test con valori booleani - usiamo confronti numerici 
+def main() {
+    true_val = 1   // Rappresenta true
+    false_val = 0  // Rappresenta false
+    
+    result = 0
+    
+    if (true_val == 1) {
+        result = result + 1
+    }
+    
+    if (false_val == 1) {
+        result = result + 100  // Non eseguito
+    } else {
+        result = result + 1
+    }
+    
+    return result
+}

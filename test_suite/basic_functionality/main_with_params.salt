@@ -1,0 +1,4 @@
+// Test di una funzione main con parametri
+def main(x, y) {
+    return x + y
+}

@@ -1,0 +1,4 @@
+// Test di funzione inesistente
+def main() {
+    return non_existent_function(5)  // Dovrebbe generare errore: funzione non definita
+}

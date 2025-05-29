@@ -1,0 +1,29 @@
+// Test con blocchi molto annidati
+def main() {
+    x = 1
+    {
+        x = x + 1
+        {
+            x = x + 1
+            {
+                x = x + 1
+                {
+                    x = x + 1
+                    {
+                        x = x + 1
+                        {
+                            x = x + 1
+                            {
+                                x = x + 1
+                                {
+                                    x = x + 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return x
+}

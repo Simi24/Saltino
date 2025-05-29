@@ -1,0 +1,8 @@
+// Test semplice con literali booleani
+def main() {
+    if (true) {
+        return 1
+    } else {
+        return 0
+    }
+}

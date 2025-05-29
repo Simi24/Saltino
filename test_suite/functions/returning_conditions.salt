@@ -1,0 +1,32 @@
+// Test di funzioni che restituiscono condizioni
+def main() {
+    result = 0
+    
+    if (is_positive(5)) {
+        result = result + 1
+    }
+    
+    if (is_equal(10, 10)) {
+        result = result + 1
+    }
+    
+    if (is_greater(3, 8)) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    return result
+}
+
+def is_positive(n) {
+    return n > 0
+}
+
+def is_equal(a, b) {
+    return a == b
+}
+
+def is_greater(x, y) {
+    return x > y
+}

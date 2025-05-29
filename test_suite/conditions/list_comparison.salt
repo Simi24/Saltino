@@ -1,0 +1,29 @@
+// Test di confronto tra liste (solo == con [])
+def main() {
+    empty1 = []
+    empty2 = []
+    non_empty = 1 :: []
+    
+    result = 0
+    
+    // Test: [] == []
+    if (empty1 == empty2) {
+        result = result + 1
+    }
+    
+    // Test: lista non vuota == []
+    if (non_empty == []) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    // Test: [] == lista non vuota
+    if ([] == non_empty) {
+        result = result + 100  // Non dovrebbe essere eseguito
+    } else {
+        result = result + 1
+    }
+    
+    return result
+}

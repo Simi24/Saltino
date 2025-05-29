@@ -1,0 +1,6 @@
+// Test di confronto invalido tra liste
+def main() {
+    list1 = 1 :: 2 :: []
+    list2 = 3 :: 4 :: []
+    return list1 < list2  // Dovrebbe generare errore: < non supportato tra liste
+}

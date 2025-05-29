@@ -1,0 +1,6 @@
+// Test di cons con tipo errato
+def main() {
+    a = true
+    b = []
+    return a :: b  // Dovrebbe generare errore: cons richiede intero :: lista
+}

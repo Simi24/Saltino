@@ -1,0 +1,20 @@
+// Test con lista molto lunga
+def main() {
+    return sum_long_list(build_long_list(50))
+}
+
+def build_long_list(n) {
+    if (n <= 0) {
+        return []
+    } else {
+        return n :: build_long_list(n - 1)
+    }
+}
+
+def sum_long_list(list) {
+    if (list == []) {
+        return 0
+    } else {
+        return head(list) + sum_long_list(tail(list))
+    }
+}

@@ -1,0 +1,13 @@
+// Test di chiamate di funzioni associate a destra: f(x,y)(z)
+def main() {
+    return curry_add(5, 3)(10)
+}
+
+def curry_add(x, y) {
+    sum = x + y
+    return partial_add
+}
+
+def partial_add(z) {
+    return z + 100  // Simuliamo l'uso del valore precedente
+}

@@ -1,0 +1,12 @@
+// Test di scope di base
+def main() {
+    x = 10
+    {
+        y = 20
+        {
+            z = x + y  // x e y sono visibili
+        }
+    }
+    // z non è visibile qui
+    return x  // Dovrebbe restituire 10
+}

@@ -1,0 +1,5 @@
+// Test di variabile non definita
+def main() {
+    x = 10
+    return y  // Dovrebbe generare errore: variabile y non definita
+}
