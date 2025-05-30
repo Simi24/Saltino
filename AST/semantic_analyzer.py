@@ -15,6 +15,16 @@ workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, workspace_root)
 
 
+class SemanticError(Exception):
+    """Eccezione base per errori semantici"""
+    pass
+
+
+class UnboundLocalError(SemanticError):
+    """Eccezione per variabili locali non inizializzate"""
+    pass
+
+
 class SemanticAnalyzer:
     """Analizzatore semantico che implementa il pattern Visitor per decorare l'AST"""
 
@@ -33,6 +43,12 @@ class SemanticAnalyzer:
             program.accept(self)
             print("✅ Analisi semantica completata con successo!")
             return True
+        except UnboundLocalError as e:
+            print(f"❌ UnboundLocalError: {e}")
+            return False
+        except SemanticError as e:
+            print(f"❌ Errore semantico: {e}")
+            return False
         except Exception as e:
             print(f"❌ Errore nell'analisi semantica: {e}")
             return False
@@ -91,7 +107,12 @@ class SemanticAnalyzer:
         print(f"--- Fine funzione: {node.name} ---")
 
     def visit_block(self, node: Block):
-        """Visita un blocco di istruzioni"""
+        """Visita un blocco di istruzioni
+        
+        Implementa un approccio a due fasi per rilevare UnboundLocalError:
+        1. Prima fase: identifica tutte le variabili che vengono assegnate nel blocco
+        2. Seconda fase: analizza le espressioni con la conoscenza delle variabili locali
+        """
         # Entra in un nuovo scope per il blocco
         block_scope = self.current_scope.enter("block")
         old_scope = self.current_scope
@@ -100,13 +121,39 @@ class SemanticAnalyzer:
         self.set_node_info(node, scope=block_scope)
         print(f"  Entrato nel blocco scope: {block_scope}")
 
-        # Analizza tutte le istruzioni nel blocco
+        # FASE 1: Pre-dichiarazione delle variabili locali
+        # Identifica tutte le variabili che vengono assegnate in questo blocco
+        local_assignments = set()
+        self._collect_local_assignments(node.statements, local_assignments)
+        
+        # Pre-dichiara tutte le variabili locali come "non inizializzate"
+        for var_name in local_assignments:
+            var_info = self.current_scope.bind(var_name, SymbolKind.VARIABLE, None)
+            print(f"  Pre-dichiarata variabile locale: {var_name} -> {var_info.unique_name}")
+            # Marca la variabile come non inizializzata
+            self.set_node_info(var_info, uninitialized=True)
+
+        # FASE 2: Analisi delle istruzioni
         for statement in node.statements:
             statement.accept(self)
 
         # Esce dal scope del blocco
         self.current_scope = old_scope
         print(f"  Uscito dal blocco scope: {block_scope}")
+
+    def _collect_local_assignments(self, statements, local_assignments):
+        """Raccoglie ricorsivamente tutti i nomi di variabili assegnate nelle statements"""
+        for stmt in statements:
+            if isinstance(stmt, Assignment):
+                local_assignments.add(stmt.variable)
+            elif isinstance(stmt, IfStatement):
+                # Analizza ricorsivamente i blocchi then/else
+                self._collect_local_assignments(stmt.then_block.statements, local_assignments)
+                if stmt.else_block:
+                    self._collect_local_assignments(stmt.else_block.statements, local_assignments)
+            elif isinstance(stmt, Block):
+                # Non raccoglie da blocchi annidati - hanno il loro scope
+                pass
 
     def visit_assignment(self, node: Assignment):
         """Visita un assegnamento
@@ -137,16 +184,20 @@ class SemanticAnalyzer:
         # Prima analizza il valore da assegnare (RHS)
         node.value.accept(self)
 
-        # Poi dichiara/aggiorna la variabile (LHS)
-        # In Saltino, l'assignment crea la variabile se non esiste
+        # Poi gestisce l'assegnamento (LHS)
         existing = self.current_scope.lookup_local(node.variable)
         if existing:
-            # Variabile già esiste nel scope corrente - shadowing o riassegnamento
-            print(
-                f"  Riassegnamento/Shadow: {node.variable} (era {existing.unique_name})")
+            # Variabile già esiste nel scope corrente
+            is_uninitialized = self.get_node_info(existing, 'uninitialized', False)
+            if is_uninitialized:
+                # Prima volta che viene assegnata - la marchiamo come inizializzata
+                self.set_node_info(existing, uninitialized=False)
+                print(f"  Inizializzata variabile locale: {node.variable} -> {existing.unique_name}")
+            else:
+                print(f"  Riassegnamento: {node.variable} -> {existing.unique_name}")
             var_info = existing
         else:
-            # Nuova variabile
+            # Nuova variabile (questo dovrebbe essere raro con il pre-scan)
             var_info = self.current_scope.bind(
                 node.variable, SymbolKind.VARIABLE, node)
             print(
@@ -202,6 +253,18 @@ class SemanticAnalyzer:
         try:
             # Risolve il riferimento
             symbol_info = self.current_scope.lookup(node.name)
+            
+            # Controlla se è una variabile locale non inizializzata
+            if symbol_info.kind == SymbolKind.VARIABLE:
+                is_uninitialized = self.get_node_info(symbol_info, 'uninitialized', False)
+                if is_uninitialized:
+                    # Questo è il caso di UnboundLocalError
+                    raise UnboundLocalError(
+                        f"cannot access local variable '{node.name}' "
+                        f"where it is not associated with a value. "
+                        f"Variable '{node.name}' is assigned in this scope, making it local, "
+                        f"but it's referenced before assignment at {node.position}")
+            
             self.set_node_info(node, resolved_info=symbol_info)
             print(
                 f"  Risolto: {node.name} -> {symbol_info.unique_name} ({symbol_info.kind.value})")
