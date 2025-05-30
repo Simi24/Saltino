@@ -1,0 +1,6 @@
+// Test per errore lessicale: caratteri speciali vari
+def main() {
+    x = 5 ~ 3  // '~' non è supportato
+    y = 2 ` 4  // '`' non è supportato
+    return x
+}

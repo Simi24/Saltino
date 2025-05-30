@@ -1,0 +1,8 @@
+// Test per errore sintattico: virgola extra nei parametri
+def main() {
+    return add(5, 3,)  // Virgola finale non valida
+}
+
+def add(a, b) {
+    return a + b
+}

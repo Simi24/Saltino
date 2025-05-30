@@ -1,0 +1,8 @@
+// Test per errore sintattico: else senza if
+def main() {
+    x = 5
+    } else {  // Errore: else senza if corrispondente
+        return 0
+    }
+    return x
+}

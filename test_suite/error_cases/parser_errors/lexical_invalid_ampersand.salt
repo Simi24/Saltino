@@ -1,0 +1,5 @@
+// Test per errore lessicale: carattere '&' non valido
+def main() {
+    x = true & false  // Dovrebbe essere 'and' invece di '&'
+    return x
+}

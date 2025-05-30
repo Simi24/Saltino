@@ -1,0 +1,5 @@
+// Test per errore lessicale: carattere '!' come operatore binario
+def main() {
+    x = 5 ! 3  // '!' non può essere usato come operatore binario
+    return x
+}

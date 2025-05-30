@@ -1,0 +1,5 @@
+// Test per errore lessicale: numero con spazi interni
+def main() {
+    x = 12 34  // Errore: spazio all'interno di un numero
+    return x
+}

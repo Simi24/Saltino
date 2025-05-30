@@ -1,0 +1,6 @@
+// Test per errore semantico: lista con elementi di tipo misto
+def main() {
+    // Le liste devono contenere solo interi
+    x = [1, true, 3]  // Errore: boolean in lista di interi
+    return x
+}

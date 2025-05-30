@@ -13,7 +13,7 @@ def run_test(test_file, should_fail=False):
     """Esegue un singolo test e ritorna (success, output, error)"""
     try:
         result = subprocess.run(
-            [sys.executable, "iterative_interpreter.py", str(test_file)],
+            [sys.executable, "interpreter.py", str(test_file)],
             capture_output=True,
             text=True,
             timeout=30
@@ -68,7 +68,7 @@ def main():
         print(f"\n📁 Categoria: {category}")
         print("-" * 30)
         
-        test_files = sorted(category_dir.glob("*.salt"))
+        test_files = sorted(category_dir.glob("**/*.salt"))
         for test_file in test_files:
             success, stdout, stderr = run_test(test_file, should_fail=False)
             
@@ -90,7 +90,7 @@ def main():
         print(f"\n📁 Categoria: {category} (test di errori)")
         print("-" * 30)
         
-        test_files = sorted(category_dir.glob("*.salt"))
+        test_files = sorted(category_dir.glob("**/*.salt"))
         for test_file in test_files:
             success, stdout, stderr = run_test(test_file, should_fail=True)
             

@@ -1,0 +1,5 @@
+// Test per errore lessicale: carattere '#' non valido (commento non supportato)
+def main() {
+    x = 5 + 3  # questo dovrebbe essere un errore
+    return x
+}

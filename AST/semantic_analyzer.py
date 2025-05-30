@@ -22,7 +22,10 @@ class SemanticError(Exception):
 
 class UnboundLocalError(SemanticError):
     """Eccezione per variabili locali non inizializzate"""
-    pass
+    def __init__(self, message: str, position=None, variable_name=None):
+        super().__init__(message)
+        self.position = position
+        self.variable_name = variable_name
 
 
 class SemanticAnalyzer:
@@ -33,6 +36,8 @@ class SemanticAnalyzer:
         self.global_scope = SymbolTable(scope_name="global")
         self.current_scope = self.global_scope
         self.symbol_counter = 0
+        self.error_message = None  # Per memorizzare il messaggio di errore
+        self.error_collector = None  # Riferimento all'ErrorCollector esterno
 
         # Dizionario per memorizzare le informazioni semantiche sui nodi
         # Chiave: id(nodo), Valore: informazioni semantiche
@@ -46,14 +51,28 @@ class SemanticAnalyzer:
                 print("✅ Analisi semantica completata con successo!")
             return True
         except UnboundLocalError as e:
+            self.error_message = str(e)
+            # Se abbiamo un error_collector, aggiungi l'errore lì
+            if self.error_collector and hasattr(e, 'position'):
+                self.error_collector.add_unbound_local_error(
+                    str(e), e.position.line, e.position.column, 
+                    getattr(e, 'variable_name', None)
+                )
             if self.debug_mode:
                 print(f"❌ UnboundLocalError: {e}")
             return False
         except SemanticError as e:
+            self.error_message = str(e)
+            # Se abbiamo un error_collector, aggiungi l'errore lì
+            if self.error_collector and hasattr(e, 'position'):
+                self.error_collector.add_semantic_error(
+                    str(e), e.position.line, e.position.column
+                )
             if self.debug_mode:
                 print(f"❌ Errore semantico: {e}")
             return False
         except Exception as e:
+            self.error_message = str(e)
             if self.debug_mode:
                 print(f"❌ Errore nell'analisi semantica: {e}")
             return False
@@ -278,11 +297,11 @@ class SemanticAnalyzer:
                     symbol_info, 'uninitialized', False)
                 if is_uninitialized:
                     # Questo è il caso di UnboundLocalError
-                    raise UnboundLocalError(
-                        f"cannot access local variable '{node.name}' "
-                        f"where it is not associated with a value. "
-                        f"Variable '{node.name}' is assigned in this scope, making it local, "
-                        f"but it's referenced before assignment at {node.position}")
+                    error_msg = (f"cannot access local variable '{node.name}' "
+                               f"where it is not associated with a value. "
+                               f"Variable '{node.name}' is assigned in this scope, making it local, "
+                               f"but it's referenced before assignment at {node.position}")
+                    raise UnboundLocalError(error_msg, node.position, node.name)
 
             self.set_node_info(node, resolved_info=symbol_info)
             self._debug_print(

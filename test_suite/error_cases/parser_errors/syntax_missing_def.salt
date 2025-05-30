@@ -1,0 +1,4 @@
+// Test per errore sintattico: manca la keyword 'def'
+main() {  // Manca 'def' prima di main
+    return 42
+}

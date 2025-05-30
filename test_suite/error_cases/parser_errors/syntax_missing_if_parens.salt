@@ -1,0 +1,7 @@
+// Test per errore sintattico: condizione malformata nell'if
+def main() {
+    if 5 > 3 {  // Mancano le parentesi intorno alla condizione
+        return true
+    }
+    return false
+}

@@ -1,0 +1,5 @@
+// Test per errore sintattico: graffa di chiusura mancante
+def main() {
+    x = 5 + 3
+    return x
+// Manca la graffa di chiusura

@@ -7,262 +7,21 @@ la ricorsione dalle chiamate di funzioni e fornisce esecuzione iterativa
 del codice rappresentato dall'AST.
 """
 
-from Grammatica.SaltinoParser import SaltinoParser
-from Grammatica.SaltinoLexer import SaltinoLexer
-from AST.ASTVisitor import build_ast
 from AST.ASTNodes import *
 from AST.semantic_analyzer import SemanticAnalyzer
-from AST.ASTsymbol_table import SymbolTable, SymbolInfo, SymbolKind
-from antlr4 import InputStream, CommonTokenStream
-from custom_error_listener import create_error_listener, SaltinoSyntaxError
-from parser_errors import ErrorCollector, ErrorSeverity, SaltinoParseError
-from typing import Any, Dict, List, Optional, Union
+from AST.ASTsymbol_table import SymbolKind
+from saltino_parser import parse_saltino, parse_saltino_interactive
+from errors.runtime_errors import SaltinoRuntimeError
+from errors.parser_errors import SaltinoParseError, SaltinoError
+from execution_frames import ExecutionFrame, FrameType
+from execution_environment import Environment
+from saltino_operators import SaltinoOperators
+from typing import Any, List, Optional
 import sys
 import os
-from dataclasses import dataclass, field
-from enum import Enum
+
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-
-def parse_saltino(input_text: str, raise_on_error: bool = True) -> tuple[Optional[Program], ErrorCollector]:
-    """
-    Parsa il codice sorgente Saltino utilizzando il custom error listener.
-
-    Args:
-        input_text: Il codice sorgente da parsare
-        raise_on_error: Se True, solleva eccezioni in caso di errori di parsing
-
-    Returns:
-        Tupla contenente (AST, ErrorCollector)
-
-    Raises:
-        SaltinoParseError: Se ci sono errori di parsing e raise_on_error è True
-    """
-    # Crea un collettore di errori
-    error_collector = ErrorCollector()
-
-    try:
-        # Crea lo stream di input
-        input_stream = InputStream(input_text)
-
-        # Crea il lexer con custom error listener
-        lexer = SaltinoLexer(input_stream)
-        lexer_error_listener = create_error_listener()
-        lexer_error_listener.error_collector = error_collector
-        lexer.removeErrorListeners()  # Rimuovi i listener di default
-        lexer.addErrorListener(lexer_error_listener)
-
-        # Crea lo stream di token
-        token_stream = CommonTokenStream(lexer)
-
-        # Crea il parser con custom error listener
-        parser = SaltinoParser(token_stream)
-        parser_error_listener = create_error_listener()
-        parser_error_listener.error_collector = error_collector
-        parser.removeErrorListeners()  # Rimuovi i listener di default
-        parser.addErrorListener(parser_error_listener)
-
-        # Parsa il programma
-        tree = parser.programma()
-
-        # Controlla se ci sono stati errori di parsing
-        if error_collector.has_errors():
-            if raise_on_error:
-                # Genera un report degli errori e solleva un'eccezione
-                error_report = error_collector.get_error_report()
-                raise error_report.errors[0]  # Solleva il primo errore
-            else:
-                # In modalità non-raising, ritorna None per l'AST
-                return None, error_collector
-
-        # Costruisci l'AST se non ci sono errori
-        ast = build_ast(tree)
-
-        # Se ci sono stati warning ma non errori, li includiamo nel report
-        if error_collector.has_warnings():
-            print("Warning durante il parsing:")
-            for warning in error_collector.get_warnings():
-                print(f"  {warning}")
-
-        return ast, error_collector
-
-    except Exception as e:
-        # Se è già un'eccezione Saltino personalizzata, rilanciala
-        if hasattr(e, 'position') and hasattr(e, 'message'):
-            if raise_on_error:
-                raise e
-            else:
-                error_collector.add_error(e, ErrorSeverity.FATAL)
-                return None, error_collector
-        else:
-            # Altrimenti wrappala in un'eccezione generica
-            parse_error = SaltinoParseError(
-                f"Errore critico durante il parsing: {str(e)}")
-            if raise_on_error:
-                raise parse_error
-            else:
-                error_collector.add_error(parse_error, ErrorSeverity.FATAL)
-                return None, error_collector
-
-
-class SaltinoRuntimeError(Exception):
-    """Eccezione per errori di runtime del linguaggio Saltino."""
-
-    def __init__(self, message: str, position: Optional[SourcePosition] = None):
-        self.message = message
-        self.position = position
-        super().__init__(self._format_message())
-
-    def _format_message(self):
-        if self.position:
-            return f"Runtime Error at {self.position}: {self.message}"
-        return f"Runtime Error: {self.message}"
-
-
-class FrameType(Enum):
-    """Tipi di frame nello stack di esecuzione."""
-    FUNCTION_CALL = "function_call"
-    BLOCK = "block"
-    EXPRESSION = "expression"
-    CONDITION = "condition"
-    IF_STATEMENT = "if_statement"
-    ASSIGNMENT = "assignment"
-    RETURN = "return"
-
-
-@dataclass
-class ExecutionFrame:
-    """Frame di esecuzione contenente lo stato di un'operazione."""
-    frame_type: FrameType
-    node: ASTNode
-    environment: 'Environment'
-    # Riferimento all'analizzatore semantico
-    semantic_analyzer: Optional['SemanticAnalyzer'] = None
-    state: Dict[str, Any] = field(default_factory=dict)
-    result: Any = None
-    completed: bool = False
-
-    def __post_init__(self):
-        # Inizializza lo stato specifico per tipo di frame
-        if self.frame_type == FrameType.FUNCTION_CALL:
-            self.state.setdefault('arguments_evaluated', [])
-            self.state.setdefault('current_arg_index', 0)
-            self.state.setdefault('function_resolved', False)
-            self.state.setdefault('body_executed', False)
-        elif self.frame_type == FrameType.BLOCK:
-            self.state.setdefault('current_statement_index', 0)
-            self.state.setdefault('statements_results', [])
-        elif self.frame_type == FrameType.EXPRESSION:
-            self.state.setdefault('operands_evaluated', [])
-            self.state.setdefault('current_operand_index', 0)
-            # Inizializzazioni specifiche per chiamate di funzione in espressioni
-            if hasattr(self, 'node') and isinstance(self.node, FunctionCall):
-                self.state.setdefault('function_evaluated', False)
-                self.state.setdefault('function_resolved', False)
-                self.state.setdefault('function_called', False)
-                self.state.setdefault('current_phase', 'evaluating_function')
-                self.state.setdefault('arguments_evaluated', [])
-                self.state.setdefault('current_arg_index', 0)
-        elif self.frame_type == FrameType.CONDITION:
-            self.state.setdefault('operands_evaluated', [])
-            self.state.setdefault('current_operand_index', 0)
-            # Inizializzazioni specifiche per chiamate di funzione in condizioni
-            if hasattr(self, 'node') and isinstance(self.node, FunctionCall):
-                self.state.setdefault('function_evaluated', False)
-                self.state.setdefault('function_resolved', False)
-                self.state.setdefault('function_called', False)
-                self.state.setdefault('current_phase', 'evaluating_function')
-                self.state.setdefault('arguments_evaluated', [])
-                self.state.setdefault('current_arg_index', 0)
-        elif self.frame_type == FrameType.IF_STATEMENT:
-            self.state.setdefault('condition_evaluated', False)
-            self.state.setdefault('condition_result', None)
-            self.state.setdefault('branch_executed', False)
-
-
-class Environment:
-    """
-    Ambiente per le variabili e le funzioni con supporto per nomi semantici univoci.
-
-    Utilizza i nomi univoci generati dal SemanticAnalyzer per evitare conflitti
-    e gestire correttamente gli scope durante l'esecuzione iterativa.
-    """
-
-    def __init__(self, parent: Optional['Environment'] = None, scope_name: str = "env"):
-        self.parent = parent
-        self.scope_name = scope_name
-        # Usa nomi univoci dalla symbol table invece dei nomi originali
-        # chiave: unique_name, valore: valore runtime
-        self.variables: Dict[str, Any] = {}
-        # chiave: nome funzione, valore: AST funzione
-        self.functions: Dict[str, Function] = {}
-
-    def get_unique_name(self, node: ASTNode, semantic_analyzer: SemanticAnalyzer) -> str:
-        """
-        Ottiene il nome univoco per un nodo dall'analizzatore semantico.
-        Usato per identificatori e assegnamenti.
-        """
-        if isinstance(node, Identifier):
-            # Per gli identificatori, cerca nella symbol table
-            scope = semantic_analyzer.get_node_info(node, 'scope')
-            if scope:
-                try:
-                    symbol_info = scope.lookup(node.name)
-                    return symbol_info.unique_name
-                except ValueError:
-                    raise SaltinoRuntimeError(
-                        f"Undefined variable: {node.name}")
-            else:
-                raise SaltinoRuntimeError(
-                    f"No scope information for identifier: {node.name}")
-        elif isinstance(node, Assignment):
-            # Per gli assegnamenti, cerca le informazioni della variabile
-            var_info = semantic_analyzer.get_node_info(node, 'variable_info')
-            if var_info:
-                return var_info.unique_name
-            else:
-                raise SaltinoRuntimeError(
-                    f"No variable info for assignment: {node.variable}")
-        else:
-            raise SaltinoRuntimeError(
-                f"Cannot get unique name for node type: {type(node)}")
-
-    def define_variable(self, unique_name: str, value: Any):
-        """Definisce una variabile usando il nome univoco."""
-        self.variables[unique_name] = value
-
-    def get_variable(self, unique_name: str) -> Any:
-        """Ottiene il valore di una variabile usando il nome univoco."""
-        if unique_name in self.variables:
-            return self.variables[unique_name]
-        elif self.parent:
-            return self.parent.get_variable(unique_name)
-        else:
-            raise SaltinoRuntimeError(
-                f"Undefined variable with unique name: {unique_name}")
-
-    def set_variable(self, unique_name: str, value: Any):
-        """Imposta il valore di una variabile esistente usando il nome univoco."""
-        if unique_name in self.variables:
-            self.variables[unique_name] = value
-        elif self.parent:
-            self.parent.set_variable(unique_name, value)
-        else:
-            # Se la variabile non esiste, la creiamo nell'ambiente corrente
-            self.variables[unique_name] = value
-
-    def define_function(self, name: str, function: Function):
-        """Definisce una funzione nell'ambiente corrente."""
-        self.functions[name] = function
-
-    def get_function(self, name: str) -> Function:
-        """Ottiene una funzione per nome."""
-        if name in self.functions:
-            return self.functions[name]
-        elif self.parent:
-            return self.parent.get_function(name)
-        else:
-            raise SaltinoRuntimeError(f"Undefined function: {name}")
 
 
 class IterativeSaltinoInterpreter:
@@ -283,83 +42,19 @@ class IterativeSaltinoInterpreter:
         self.semantic_analyzer: Optional[SemanticAnalyzer] = None
 
         # Dispatch table per le operazioni binarie
-        self.binary_operators = {
-            '+': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a + b),
-            '-': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a - b),
-            '*': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a * b),
-            '/': lambda x, y: self._safe_divide(x, y),
-            '%': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a % b),
-            '^': lambda x, y: self._arithmetic_op(x, y, lambda a, b: a ** b),
-            '::': lambda x, y: self._cons(x, y),
-        }
+        self.binary_operators = SaltinoOperators.get_binary_operators()
 
         # Dispatch table per le operazioni unarie
-        self.unary_operators = {
-            '+': lambda x: self._unary_arithmetic_op(x, lambda a: +a),
-            '-': lambda x: self._unary_arithmetic_op(x, lambda a: -a),
-            'head': lambda x: self._head(x),
-            'tail': lambda x: self._tail(x),
-        }
+        self.unary_operators = SaltinoOperators.get_unary_operators()
 
         # Dispatch table per gli operatori di confronto
-        self.comparison_operators = {
-            '==': lambda x, y: self._equality_comparison(x, y),
-            '!=': lambda x, y: self._comparison_op(x, y, lambda a, b: a != b),
-            '<': lambda x, y: self._comparison_op(x, y, lambda a, b: a < b),
-            '<=': lambda x, y: self._comparison_op(x, y, lambda a, b: a <= b),
-            '>': lambda x, y: self._comparison_op(x, y, lambda a, b: a > b),
-            '>=': lambda x, y: self._comparison_op(x, y, lambda a, b: a >= b),
-        }
+        self.comparison_operators = SaltinoOperators.get_comparison_operators()
 
         # Dispatch table per le operazioni logiche
-        self.logical_operators = {
-            'and': lambda x, y: self._logical_op(x, y, lambda a, b: a and b),
-            'or': lambda x, y: self._logical_op(x, y, lambda a, b: a or b),
-        }
+        self.logical_operators = SaltinoOperators.get_logical_operators()
 
-    def _safe_divide(self, x: Union[int, float], y: Union[int, float]) -> Union[int, float]:
-        """Divisione sicura che controlla la divisione per zero."""
-        # Controllo di tipo: operatori aritmetici possono operare solo tra interi
-        if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(
-                f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
-        if y == 0:
-            raise SaltinoRuntimeError("Division by zero")
-        return x // y  # Divisione intera per mantenere il tipo intero
-
-    def _cons(self, head: Any, tail: List[Any]) -> List[Any]:
-        """Operatore cons (::) che aggiunge un elemento all'inizio di una lista."""
-        # Controllo di tipo: :: può operare solo tra un intero e una lista di interi
-        if type(head) is not int:
-            raise SaltinoRuntimeError(
-                f"Cons operator expects an integer as first argument, got {type(head).__name__}")
-        if not isinstance(tail, list):
-            raise SaltinoRuntimeError(
-                f"Cons operator expects a list as second argument, got {type(tail).__name__}")
-        # Verifica che tutti gli elementi della lista siano interi
-        for i, item in enumerate(tail):
-            if type(item) is not int:
-                raise SaltinoRuntimeError(
-                    f"Cons operator expects a list of integers, but element at index {i} is {type(item).__name__}")
-        return [head] + tail
-
-    def _head(self, lst: List[Any]) -> Any:
-        """Restituisce il primo elemento di una lista."""
-        if not isinstance(lst, list):
-            raise SaltinoRuntimeError(
-                f"Head operator expects a list, got {type(lst)}")
-        if len(lst) == 0:
-            raise SaltinoRuntimeError("Head of empty list")
-        return lst[0]
-
-    def _tail(self, lst: List[Any]) -> List[Any]:
-        """Restituisce la coda di una lista (tutti gli elementi tranne il primo)."""
-        if not isinstance(lst, list):
-            raise SaltinoRuntimeError(
-                f"Tail operator expects a list, got {type(lst)}")
-        if len(lst) == 0:
-            raise SaltinoRuntimeError("Tail of empty list")
-        return lst[1:]
+        # Dispatch table per gli operatori di confronto
+        self.comparison_operators = SaltinoOperators.get_comparison_operators()
 
     def _create_new_environment(self, parent: Environment = None) -> Environment:
         """Crea un nuovo ambiente con il parent specificato."""
@@ -432,22 +127,15 @@ class IterativeSaltinoInterpreter:
         return None
 
     def execute_program(self, program: Program) -> Any:
-        """Esegue un programma Saltino in modo iterativo con analisi semantica."""
-        # Primo passo: esegue l'analisi semantica
-        self.semantic_analyzer = SemanticAnalyzer(debug_mode=self.debug_mode)
-        analysis_success = self.semantic_analyzer.analyze(program)
+        """Esegue un programma Saltino in modo iterativo."""
+        # L'analisi semantica è già stata eseguita nel parser
+        # Quindi possiamo procedere direttamente con l'esecuzione
 
-        # Se l'analisi semantica fallisce, interrompi l'esecuzione
-        if not analysis_success:
-            return None
-
-        # self.semantic_analyzer.print_symbol_tables()
-
-        # Secondo passo: registra tutte le funzioni nell'ambiente globale
+        # Registra tutte le funzioni nell'ambiente globale
         for function in program.functions:
             self.global_env.define_function(function.name, function)
 
-        # Terzo passo: cerca la funzione main e la esegue
+        # Cerca la funzione main e la esegue
         try:
             main_function = self.global_env.get_function('main')
         except SaltinoRuntimeError:
@@ -468,28 +156,9 @@ class IterativeSaltinoInterpreter:
         # Crea un nuovo ambiente per la funzione
         function_env = self._create_new_environment(self.global_env)
 
-        # Binding dei parametri usando i nomi univoci dalla symbol table
-        # Ottieni lo scope della funzione dall'analizzatore semantico
-        function_scope = self.semantic_analyzer.get_node_info(
-            function, 'scope')
-        if function_scope:
-            for param, arg in zip(function.parameters, arguments):
-                try:
-                    # Cerca il parametro nella symbol table dello scope della funzione
-                    param_info = function_scope.lookup_local(param)
-                    if param_info and param_info.kind == SymbolKind.PARAMETER:
-                        # Usa il nome univoco del parametro
-                        function_env.define_variable(
-                            param_info.unique_name, arg)
-                    else:
-                        raise SaltinoRuntimeError(
-                            f"Parameter '{param}' not found in function scope")
-                except ValueError:
-                    raise SaltinoRuntimeError(
-                        f"Parameter '{param}' not found in symbol table")
-        else:
-            raise SaltinoRuntimeError(
-                f"No scope information for function '{function.name}'")
+        # Binding dei parametri
+        for param, arg in zip(function.parameters, arguments):
+            function_env.define_variable(param, arg)
 
         # Pusha il frame della funzione
         frame = self.push_frame(FrameType.FUNCTION_CALL,
@@ -1180,108 +849,6 @@ class IterativeSaltinoInterpreter:
 
             frame.completed = True
 
-    def _arithmetic_op(self, x: Any, y: Any, operation) -> int:
-        """Esegue un'operazione aritmetica con controllo di tipo."""
-        # Controllo di tipo: operatori aritmetici possono operare solo tra interi
-        # Nota: isinstance(True, int) è True in Python, quindi controlliamo esplicitamente bool
-        if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(
-                f"Arithmetic operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
-        return operation(x, y)
-
-    def _unary_arithmetic_op(self, x: Any, operation) -> int:
-        """Esegue un'operazione aritmetica unaria con controllo di tipo."""
-        # Controllo di tipo: operatori aritmetici possono operare solo su interi
-        if type(x) is not int:
-            raise SaltinoRuntimeError(
-                f"Arithmetic operators can only operate on integers, got {type(x).__name__}")
-        return operation(x)
-
-    def _comparison_op(self, x: Any, y: Any, operation) -> bool:
-        """Esegue un'operazione di confronto con controllo di tipo."""
-        # Controllo di tipo: operatori di confronto (eccetto ==) possono operare solo su interi
-        if type(x) is not int or type(y) is not int:
-            raise SaltinoRuntimeError(
-                f"Comparison operators can only operate on integers, got {type(x).__name__} and {type(y).__name__}")
-        return operation(x, y)
-
-    def _equality_comparison(self, x: Any, y: Any) -> bool:
-        """Esegue il confronto di uguaglianza con regole speciali."""
-        # == può operare su interi o tra liste di interi, dove una deve essere []
-        if type(x) is int and type(y) is int:
-            return x == y
-        elif isinstance(x, list) and isinstance(y, list):
-            # Almeno una delle due liste deve essere vuota
-            if len(x) == 0 or len(y) == 0:
-                # Verifica che entrambe siano liste di interi
-                for item in x:
-                    if type(item) is not int:
-                        raise SaltinoRuntimeError(
-                            f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in first list")
-                for item in y:
-                    if type(item) is not int:
-                        raise SaltinoRuntimeError(
-                            f"Equality comparison on lists requires lists of integers, but found {type(item).__name__} in second list")
-                return x == y
-            else:
-                raise SaltinoRuntimeError(
-                    "Equality comparison between lists is only allowed when at least one list is empty []")
-        else:
-            raise SaltinoRuntimeError(
-                f"Equality comparison can only operate on integers or lists of integers, got {type(x).__name__} and {type(y).__name__}")
-
-    def _logical_op(self, x: Any, y: Any, operation) -> bool:
-        """Esegue un'operazione logica con controllo di tipo."""
-        # Controllo di tipo: connettivi logici possono operare solo tra valori booleani
-        if type(x) is not bool or type(y) is not bool:
-            raise SaltinoRuntimeError(
-                f"Logical operators can only operate on boolean values, got {type(x).__name__} and {type(y).__name__}")
-        return operation(x, y)
-
-
-def parse_saltino_interactive(input_text: str) -> Optional[Program]:
-    """
-    Funzione di parsing interattiva che mostra errori dettagliati.
-
-    Args:
-        input_text: Il codice sorgente da parsare
-
-    Returns:
-        L'AST del programma o None se ci sono errori
-    """
-    try:
-        ast, error_collector = parse_saltino(input_text, raise_on_error=False)
-
-        if error_collector.has_errors():
-            print("❌ Errori di parsing:")
-            error_report = error_collector.get_error_report()
-            print(error_report.format_report())
-
-            # Mostra suggerimenti di recupero
-            from custom_error_listener import SaltinoSyntaxErrorStrategy
-            for error in error_report.errors:
-                if hasattr(error, 'offending_symbol') or hasattr(error, 'expected_tokens'):
-                    suggestions = SaltinoSyntaxErrorStrategy.suggest_recovery(
-                        error)
-                    if suggestions:
-                        print("\n💡 Suggerimenti:")
-                        for suggestion in suggestions:
-                            print(f"  - {suggestion}")
-
-            return None
-
-        if error_collector.has_warnings():
-            print("⚠️  Warning:")
-            for warning in error_collector.get_warnings():
-                print(f"  {warning}")
-
-        print("✅ Parsing completato con successo")
-        return ast
-
-    except Exception as e:
-        print(f"❌ Errore critico durante il parsing: {e}")
-        return None
-
 
 def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
     """Esegue un file Saltino usando l'interprete iterativo con gestione errori personalizzata."""
@@ -1289,44 +856,35 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
         with open(filename, 'r') as file:
             program_text = file.read()
 
-        ast, error_collector = parse_saltino(
+        ast, error_collector, semantic_analyzer = parse_saltino(
             program_text, raise_on_error=False)
 
         # Controlla se ci sono stati errori di parsing
         if error_collector.has_errors():
-            print("❌ Errori di parsing rilevati:")
-            error_report = error_collector.get_error_report()
-            print(error_report.format_report())
-
-            # Mostra suggerimenti di recupero se disponibili
-            for error in error_report.errors:
-                if hasattr(error, 'get_recovery_suggestions'):
-                    suggestions = error.get_recovery_suggestions()
-                    if suggestions:
-                        print("\n💡 Suggerimenti per la correzione:")
-                        for suggestion in suggestions:
-                            print(f"  - {suggestion}")
-
-            raise SaltinoRuntimeError(
-                "Impossibile procedere a causa di errori di parsing")
+            for error in error_collector.errors:
+                raise error.error
 
         # Se ci sono solo warning, continua ma li mostra
         if error_collector.has_warnings():
             print("⚠️  Warning durante il parsing:")
             for warning in error_collector.get_warnings():
-                print(f"  {warning}")
+                print(f"  - {warning}")
 
         if ast is None:
             raise SaltinoRuntimeError("Errore nella costruzione dell'AST")
 
         # Esecuzione con l'interprete iterativo
         interpreter = IterativeSaltinoInterpreter(debug_mode=debug_mode)
+        interpreter.semantic_analyzer = semantic_analyzer  # Passa il semantic analyzer
         result = interpreter.execute_program(ast)
 
         return result
 
     except FileNotFoundError:
         raise SaltinoRuntimeError(f"File not found: {filename}")
+    except (SaltinoParseError, SaltinoError) as e:
+        # Gli errori di parsing e semantici non sono errori di runtime
+        raise e
     except Exception as e:
         if isinstance(e, SaltinoRuntimeError):
             raise e
@@ -1355,8 +913,11 @@ if __name__ == "__main__":
     try:
         result = exec_saltino_iterative(filename, debug_mode=debug_mode)
         print(f"Program result: {result}")
+    except (SaltinoParseError, SaltinoError) as e:
+        print(f"Parse/Semantic Error: {e}")
+        sys.exit(1)
     except SaltinoRuntimeError as e:
-        print(f"Error: {e}")
+        print(f"{e}")  # Il messaggio contiene già "Runtime Error:"
         sys.exit(1)
     except KeyboardInterrupt:
         print("\nExecution interrupted by user.")

@@ -7,7 +7,7 @@ che si integrano con il sistema di errori personalizzato definito in parser_erro
 
 from antlr4.error.ErrorListener import ErrorListener
 from antlr4 import ParserRuleContext, Token
-from parser_errors import (
+from errors.parser_errors import (
     SourcePosition, SaltinoParseError, SaltinoLexicalError,
     SaltinoSyntaxError, ErrorCollector, ErrorSeverity
 )
@@ -48,8 +48,9 @@ class SaltinoErrorListener(ErrorListener):
         self._error_count += 1
         position = SourcePosition(line, column)
 
-        # Determina il tipo di errore basandosi sul riconoscitore
-        if hasattr(recognizer, 'getRuleNames'):
+        # Determina il tipo di errore basandosi sul tipo del riconoscitore
+        recognizer_type = type(recognizer).__name__
+        if 'Parser' in recognizer_type:
             # È un parser error
             error = self._create_parser_error(
                 msg, position, offendingSymbol, e)

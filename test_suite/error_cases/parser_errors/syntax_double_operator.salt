@@ -1,0 +1,5 @@
+// Test per errore sintattico: doppio operatore
+def main() {
+    x = 5 ++ 3  // Errore: operatore '++' non valido
+    return x
+}

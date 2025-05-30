@@ -246,6 +246,17 @@ class ErrorCollector:
         error = SaltinoSemanticError(message, position, node_type)
         self.add_error(error, severity)
 
+    def add_unbound_local_error(self, message: str, line: int, column: int,
+                                variable_name: Optional[str] = None,
+                                severity: str = ErrorSeverity.ERROR):
+        """Aggiunge un errore di variabile locale non inizializzata."""
+        position = SourcePosition(line, column)
+        enhanced_message = f"UnboundLocalError: {message}"
+        if variable_name:
+            enhanced_message = f"UnboundLocalError for variable '{variable_name}': {message}"
+        error = SaltinoSemanticError(enhanced_message, position, "variable_reference")
+        self.add_error(error, severity)
+
     def _generate_syntax_suggestion(self, offending_symbol: Optional[str],
                                     expected_tokens: Optional[List[str]]) -> Optional[str]:
         """Genera un suggerimento per errori di sintassi."""

@@ -1,0 +1,11 @@
+// Test per errori in funzioni annidate
+def main() {
+    return outer(5)
+}
+
+def outer(x) {
+    def inner(y {  // Errore: manca parentesi di chiusura
+        return y $ 2  // Errore: '$' non valido
+    }
+    return inner(x)
+}

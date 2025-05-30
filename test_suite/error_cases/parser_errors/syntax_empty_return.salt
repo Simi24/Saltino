@@ -1,0 +1,4 @@
+// Test per errore sintattico: return senza valore quando è richiesto
+def main() {
+    return  // Manca l'espressione dopo return
+}

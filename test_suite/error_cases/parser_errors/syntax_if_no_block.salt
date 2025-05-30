@@ -1,0 +1,6 @@
+// Test per errore sintattico: if senza blocco
+def main() {
+    if (true)
+        return 1  // Errore: manca il blocco con graffe
+    return 0
+}

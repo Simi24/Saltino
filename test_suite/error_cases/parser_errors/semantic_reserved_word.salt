@@ -1,0 +1,5 @@
+// Test per errore semantico: identificatore non valido (parola riservata)
+def main() {
+    def = 5  // 'def' è una parola riservata
+    return def
+}

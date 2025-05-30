@@ -1,0 +1,4 @@
+// Test per errore sintattico: graffa mancante
+def main() 
+    return 42  // Mancano le graffe del blocco
+}

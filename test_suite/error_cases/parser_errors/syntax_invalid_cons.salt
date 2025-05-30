@@ -1,0 +1,5 @@
+// Test per errore sintattico: operatore cons malformato
+def main() {
+    x = 5 : [1, 2, 3]  // Dovrebbe essere '::' invece di ':'
+    return x
+}
