@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from iterative_interpreter import IterativeSaltinoInterpreter, SaltinoRuntimeError
+from interpreter import IterativeSaltinoInterpreter, SaltinoRuntimeError
 from AST.ASTNodes import *
 
 def test_arithmetic_type_checking():

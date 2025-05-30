@@ -28,7 +28,8 @@ class UnboundLocalError(SemanticError):
 class SemanticAnalyzer:
     """Analizzatore semantico che implementa il pattern Visitor per decorare l'AST"""
 
-    def __init__(self):
+    def __init__(self, debug_mode: bool = False):
+        self.debug_mode = debug_mode
         self.global_scope = SymbolTable(scope_name="global")
         self.current_scope = self.global_scope
         self.symbol_counter = 0
@@ -41,16 +42,20 @@ class SemanticAnalyzer:
         """Punto di ingresso per l'analisi semantica"""
         try:
             program.accept(self)
-            print("✅ Analisi semantica completata con successo!")
+            if self.debug_mode:
+                print("✅ Analisi semantica completata con successo!")
             return True
         except UnboundLocalError as e:
-            print(f"❌ UnboundLocalError: {e}")
+            if self.debug_mode:
+                print(f"❌ UnboundLocalError: {e}")
             return False
         except SemanticError as e:
-            print(f"❌ Errore semantico: {e}")
+            if self.debug_mode:
+                print(f"❌ Errore semantico: {e}")
             return False
         except Exception as e:
-            print(f"❌ Errore nell'analisi semantica: {e}")
+            if self.debug_mode:
+                print(f"❌ Errore nell'analisi semantica: {e}")
             return False
 
     def set_node_info(self, node: ASTNode, **kwargs):
@@ -65,6 +70,11 @@ class SemanticAnalyzer:
         node_id = id(node)
         return self.node_info.get(node_id, {}).get(key, default)
 
+    def _debug_print(self, message: str):
+        """Stampa un messaggio solo se debug_mode è attivo"""
+        if self.debug_mode:
+            print(message)
+
     # ==================== VISITOR METHODS ====================
 
     def visit_program(self, node: Program):
@@ -76,7 +86,7 @@ class SemanticAnalyzer:
             func_info = self.current_scope.bind(
                 function.name, SymbolKind.FUNCTION, function)
             self.set_node_info(function, symbol_info=func_info)
-            print(
+            self._debug_print(
                 f"Dichiarata funzione: {function.name} -> {func_info.unique_name}")
 
         # Seconda passa: analizza i corpi delle funzioni
@@ -85,7 +95,7 @@ class SemanticAnalyzer:
 
     def visit_function(self, node: Function):
         """Visita una definizione di funzione"""
-        print(f"\n--- Analizzando funzione: {node.name} ---")
+        self._debug_print(f"\n--- Analizzando funzione: {node.name} ---")
 
         # Entra in un nuovo scope per la funzione
         func_scope = self.current_scope.enter(f"function_{node.name}")
@@ -97,18 +107,19 @@ class SemanticAnalyzer:
         # Dichiara i parametri nel nuovo scope
         for param in node.parameters:
             param_info = self.current_scope.bind(param, SymbolKind.PARAMETER)
-            print(f"  Parametro: {param} -> {param_info.unique_name}")
+            self._debug_print(
+                f"  Parametro: {param} -> {param_info.unique_name}")
 
         # Analizza il corpo della funzione
         node.body.accept(self)
 
         # Esce dal scope della funzione
         self.current_scope = old_scope
-        print(f"--- Fine funzione: {node.name} ---")
+        self._debug_print(f"--- Fine funzione: {node.name} ---")
 
     def visit_block(self, node: Block):
         """Visita un blocco di istruzioni
-        
+
         Implementa un approccio a due fasi per rilevare UnboundLocalError:
         1. Prima fase: identifica tutte le variabili che vengono assegnate nel blocco
         2. Seconda fase: analizza le espressioni con la conoscenza delle variabili locali
@@ -119,17 +130,19 @@ class SemanticAnalyzer:
         self.current_scope = block_scope
 
         self.set_node_info(node, scope=block_scope)
-        print(f"  Entrato nel blocco scope: {block_scope}")
+        self._debug_print(f"  Entrato nel blocco scope: {block_scope}")
 
         # FASE 1: Pre-dichiarazione delle variabili locali
         # Identifica tutte le variabili che vengono assegnate in questo blocco
         local_assignments = set()
         self._collect_local_assignments(node.statements, local_assignments)
-        
+
         # Pre-dichiara tutte le variabili locali come "non inizializzate"
         for var_name in local_assignments:
-            var_info = self.current_scope.bind(var_name, SymbolKind.VARIABLE, None)
-            print(f"  Pre-dichiarata variabile locale: {var_name} -> {var_info.unique_name}")
+            var_info = self.current_scope.bind(
+                var_name, SymbolKind.VARIABLE, None)
+            self._debug_print(
+                f"  Pre-dichiarata variabile locale: {var_name} -> {var_info.unique_name}")
             # Marca la variabile come non inizializzata
             self.set_node_info(var_info, uninitialized=True)
 
@@ -139,7 +152,7 @@ class SemanticAnalyzer:
 
         # Esce dal scope del blocco
         self.current_scope = old_scope
-        print(f"  Uscito dal blocco scope: {block_scope}")
+        self._debug_print(f"  Uscito dal blocco scope: {block_scope}")
 
     def _collect_local_assignments(self, statements, local_assignments):
         """Raccoglie ricorsivamente tutti i nomi di variabili assegnate nelle statements"""
@@ -148,9 +161,11 @@ class SemanticAnalyzer:
                 local_assignments.add(stmt.variable)
             elif isinstance(stmt, IfStatement):
                 # Analizza ricorsivamente i blocchi then/else
-                self._collect_local_assignments(stmt.then_block.statements, local_assignments)
+                self._collect_local_assignments(
+                    stmt.then_block.statements, local_assignments)
                 if stmt.else_block:
-                    self._collect_local_assignments(stmt.else_block.statements, local_assignments)
+                    self._collect_local_assignments(
+                        stmt.else_block.statements, local_assignments)
             elif isinstance(stmt, Block):
                 # Non raccoglie da blocchi annidati - hanno il loro scope
                 pass
@@ -188,19 +203,22 @@ class SemanticAnalyzer:
         existing = self.current_scope.lookup_local(node.variable)
         if existing:
             # Variabile già esiste nel scope corrente
-            is_uninitialized = self.get_node_info(existing, 'uninitialized', False)
+            is_uninitialized = self.get_node_info(
+                existing, 'uninitialized', False)
             if is_uninitialized:
                 # Prima volta che viene assegnata - la marchiamo come inizializzata
                 self.set_node_info(existing, uninitialized=False)
-                print(f"  Inizializzata variabile locale: {node.variable} -> {existing.unique_name}")
+                self._debug_print(
+                    f"  Inizializzata variabile locale: {node.variable} -> {existing.unique_name}")
             else:
-                print(f"  Riassegnamento: {node.variable} -> {existing.unique_name}")
+                self._debug_print(
+                    f"  Riassegnamento: {node.variable} -> {existing.unique_name}")
             var_info = existing
         else:
             # Nuova variabile (questo dovrebbe essere raro con il pre-scan)
             var_info = self.current_scope.bind(
                 node.variable, SymbolKind.VARIABLE, node)
-            print(
+            self._debug_print(
                 f"  Nuova variabile: {node.variable} -> {var_info.unique_name}")
 
         self.set_node_info(node, variable_info=var_info)
@@ -253,10 +271,11 @@ class SemanticAnalyzer:
         try:
             # Risolve il riferimento
             symbol_info = self.current_scope.lookup(node.name)
-            
+
             # Controlla se è una variabile locale non inizializzata
             if symbol_info.kind == SymbolKind.VARIABLE:
-                is_uninitialized = self.get_node_info(symbol_info, 'uninitialized', False)
+                is_uninitialized = self.get_node_info(
+                    symbol_info, 'uninitialized', False)
                 if is_uninitialized:
                     # Questo è il caso di UnboundLocalError
                     raise UnboundLocalError(
@@ -264,9 +283,9 @@ class SemanticAnalyzer:
                         f"where it is not associated with a value. "
                         f"Variable '{node.name}' is assigned in this scope, making it local, "
                         f"but it's referenced before assignment at {node.position}")
-            
+
             self.set_node_info(node, resolved_info=symbol_info)
-            print(
+            self._debug_print(
                 f"  Risolto: {node.name} -> {symbol_info.unique_name} ({symbol_info.kind.value})")
         except ValueError:
             raise ValueError(
@@ -305,6 +324,8 @@ class SemanticAnalyzer:
 
     def print_symbol_tables(self):
         """Stampa tutte le symbol table per debug"""
+        if not self.debug_mode:
+            return
         print("\n=== SYMBOL TABLES (GERARCHIA COMPLETA) ===")
         self._print_scope_recursive(self.global_scope, 0)
         print("\n=== RIEPILOGO VARIABILI PER SCOPE ===")
@@ -373,6 +394,8 @@ class SemanticAnalyzer:
 
     def print_decorated_ast(self):
         """Stampa l'AST decorato con le informazioni semantiche"""
+        if not self.debug_mode:
+            return
         print("\n=== AST DECORATO CON INFORMAZIONI SEMANTICHE ===")
         self._print_decorated_node(self.global_scope, 0, is_root=True)
 
@@ -401,10 +424,12 @@ class SemanticAnalyzer:
                 for node_info in nodes[:3]:  # Mostra solo i primi 3 per brevità
                     if 'variable_info' in node_info:
                         var_info = node_info['variable_info']
-                        print(f"{prefix}│     → Assegnamento: {var_info.name} → {var_info.unique_name}")
+                        print(
+                            f"{prefix}│     → Assegnamento: {var_info.name} → {var_info.unique_name}")
                     elif 'resolved_info' in node_info:
                         res_info = node_info['resolved_info']
-                        print(f"{prefix}│     → Riferimento: {res_info.name} → {res_info.unique_name}")
+                        print(
+                            f"{prefix}│     → Riferimento: {res_info.name} → {res_info.unique_name}")
                 if len(nodes) > 3:
                     print(f"{prefix}│     → ... e altri {len(nodes) - 3} nodi")
 
