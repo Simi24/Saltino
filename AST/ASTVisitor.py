@@ -270,7 +270,7 @@ class SaltinoASTVisitor(SaltinoVisitor):
 
     def visitCondAtom(self, ctx: SaltinoParser.CondAtomContext):
         """Visita condizioni atomiche (precedenza più alta)."""
-        # condAtom: espressione relop espressione | 'true' | 'false' | ID | '(' condizione ')'
+        # condAtom: espressione relop espressione | espressione | 'true' | 'false' | ID | '(' condizione ')'
         
         if ctx.relop():
             # È un confronto: espressione relop espressione
@@ -278,6 +278,12 @@ class SaltinoASTVisitor(SaltinoVisitor):
             right = self.visit(ctx.espressione(1))
             op_text = self.visit(ctx.relop())
             return ComparisonCondition(left, op_text, right, self._get_position(ctx))
+        
+        elif len(ctx.espressione()) == 1:
+            # È una singola espressione usata come condizione (include chiamate di funzione)
+            expr = self.visit(ctx.espressione(0))
+            # Restituiamo l'espressione direttamente - la verifica del tipo sarà fatta nell'interprete
+            return expr
         
         elif ctx.getText() == 'true':
             return BooleanLiteral(True, self._get_position(ctx))

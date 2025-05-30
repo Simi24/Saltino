@@ -11,6 +11,8 @@ from Grammatica.SaltinoParser import SaltinoParser
 from Grammatica.SaltinoLexer import SaltinoLexer
 from AST.ASTVisitor import build_ast
 from AST.ASTNodes import *
+from AST.semantic_analyzer import SemanticAnalyzer
+from AST.ASTsymbol_table import SymbolTable, SymbolInfo, SymbolKind
 from antlr4 import InputStream, CommonTokenStream
 from typing import Any, Dict, List, Optional, Union
 import sys
@@ -51,6 +53,7 @@ class ExecutionFrame:
     frame_type: FrameType
     node: ASTNode
     environment: 'Environment'
+    semantic_analyzer: Optional['SemanticAnalyzer'] = None  # Riferimento all'analizzatore semantico
     state: Dict[str, Any] = field(default_factory=dict)
     result: Any = None
     completed: bool = False
@@ -78,35 +81,68 @@ class ExecutionFrame:
 
 
 class Environment:
-    """Ambiente per le variabili e le funzioni."""
+    """
+    Ambiente per le variabili e le funzioni con supporto per nomi semantici univoci.
+    
+    Utilizza i nomi univoci generati dal SemanticAnalyzer per evitare conflitti
+    e gestire correttamente gli scope durante l'esecuzione iterativa.
+    """
 
-    def __init__(self, parent: Optional['Environment'] = None):
+    def __init__(self, parent: Optional['Environment'] = None, scope_name: str = "env"):
         self.parent = parent
-        self.variables: Dict[str, Any] = {}
-        self.functions: Dict[str, Function] = {}
-
-    def define_variable(self, name: str, value: Any):
-        """Definisce una variabile nell'ambiente corrente."""
-        self.variables[name] = value
-
-    def get_variable(self, name: str) -> Any:
-        """Ottiene il valore di una variabile."""
-        if name in self.variables:
-            return self.variables[name]
-        elif self.parent:
-            return self.parent.get_variable(name)
+        self.scope_name = scope_name
+        # Usa nomi univoci dalla symbol table invece dei nomi originali
+        self.variables: Dict[str, Any] = {}  # chiave: unique_name, valore: valore runtime
+        self.functions: Dict[str, Function] = {}  # chiave: nome funzione, valore: AST funzione
+        
+    def get_unique_name(self, node: ASTNode, semantic_analyzer: SemanticAnalyzer) -> str:
+        """
+        Ottiene il nome univoco per un nodo dall'analizzatore semantico.
+        Usato per identificatori e assegnamenti.
+        """
+        if isinstance(node, Identifier):
+            # Per gli identificatori, cerca nella symbol table
+            scope = semantic_analyzer.get_node_info(node, 'scope')
+            if scope:
+                try:
+                    symbol_info = scope.lookup(node.name)
+                    return symbol_info.unique_name
+                except ValueError:
+                    raise SaltinoRuntimeError(f"Undefined variable: {node.name}")
+            else:
+                raise SaltinoRuntimeError(f"No scope information for identifier: {node.name}")
+        elif isinstance(node, Assignment):
+            # Per gli assegnamenti, cerca le informazioni della variabile
+            var_info = semantic_analyzer.get_node_info(node, 'variable_info')
+            if var_info:
+                return var_info.unique_name
+            else:
+                raise SaltinoRuntimeError(f"No variable info for assignment: {node.variable}")
         else:
-            raise SaltinoRuntimeError(f"Undefined variable: {name}")
+            raise SaltinoRuntimeError(f"Cannot get unique name for node type: {type(node)}")
 
-    def set_variable(self, name: str, value: Any):
-        """Imposta il valore di una variabile esistente."""
-        if name in self.variables:
-            self.variables[name] = value
+    def define_variable(self, unique_name: str, value: Any):
+        """Definisce una variabile usando il nome univoco."""
+        self.variables[unique_name] = value
+
+    def get_variable(self, unique_name: str) -> Any:
+        """Ottiene il valore di una variabile usando il nome univoco."""
+        if unique_name in self.variables:
+            return self.variables[unique_name]
         elif self.parent:
-            self.parent.set_variable(name, value)
+            return self.parent.get_variable(unique_name)
+        else:
+            raise SaltinoRuntimeError(f"Undefined variable with unique name: {unique_name}")
+
+    def set_variable(self, unique_name: str, value: Any):
+        """Imposta il valore di una variabile esistente usando il nome univoco."""
+        if unique_name in self.variables:
+            self.variables[unique_name] = value
+        elif self.parent:
+            self.parent.set_variable(unique_name, value)
         else:
             # Se la variabile non esiste, la creiamo nell'ambiente corrente
-            self.variables[name] = value
+            self.variables[unique_name] = value
 
     def define_function(self, name: str, function: Function):
         """Definisce una funzione nell'ambiente corrente."""
@@ -124,16 +160,18 @@ class Environment:
 
 class IterativeSaltinoInterpreter:
     """
-    Interprete Iterativo per il linguaggio Saltino.
+    Interprete Iterativo per il linguaggio Saltino con supporto per analisi semantica.
 
     Utilizza uno stack di frame di esecuzione per eliminare la ricorsione
-    e gestire l'esecuzione in modo iterativo.
+    e gestire l'esecuzione in modo iterativo. Integra il SemanticAnalyzer
+    per utilizzare nomi univoci e informazioni di scope.
     """
 
     def __init__(self):
-        self.global_env = Environment()
+        self.global_env = Environment(scope_name="global")
         self.execution_stack: List[ExecutionFrame] = []
         self.result_stack: List[Any] = []
+        self.semantic_analyzer: Optional[SemanticAnalyzer] = None  # Analizzatore semantico
 
         # Dispatch table per le operazioni binarie
         self.binary_operators = {
@@ -266,8 +304,8 @@ class IterativeSaltinoInterpreter:
         return args
 
     def push_frame(self, frame_type: FrameType, node: ASTNode, environment: Environment):
-        """Aggiunge un nuovo frame allo stack di esecuzione."""
-        frame = ExecutionFrame(frame_type, node, environment)
+        """Aggiunge un nuovo frame allo stack di esecuzione con il riferimento al semantic analyzer."""
+        frame = ExecutionFrame(frame_type, node, environment, self.semantic_analyzer)
         self.execution_stack.append(frame)
         return frame
 
@@ -284,12 +322,21 @@ class IterativeSaltinoInterpreter:
         return None
 
     def execute_program(self, program: Program) -> Any:
-        """Esegue un programma Saltino in modo iterativo."""
-        # Prima registra tutte le funzioni
+        """Esegue un programma Saltino in modo iterativo con analisi semantica."""
+        # Primo passo: esegue l'analisi semantica
+        print("=== Executing Semantic Analysis ===")
+        self.semantic_analyzer = SemanticAnalyzer()
+        self.semantic_analyzer.analyze(program)
+        
+        # Opzionale: stampa informazioni di debug
+        print("\n=== Semantic Analysis Results ===")
+        self.semantic_analyzer.print_symbol_tables()
+        
+        # Secondo passo: registra tutte le funzioni nell'ambiente globale
         for function in program.functions:
             self.global_env.define_function(function.name, function)
 
-        # Cerca la funzione main e la esegue
+        # Terzo passo: cerca la funzione main e la esegue
         try:
             main_function = self.global_env.get_function('main')
         except SaltinoRuntimeError:
@@ -310,9 +357,23 @@ class IterativeSaltinoInterpreter:
         # Crea un nuovo ambiente per la funzione
         function_env = self._create_new_environment(self.global_env)
 
-        # Binding dei parametri
-        for param, arg in zip(function.parameters, arguments):
-            function_env.define_variable(param, arg)
+        # Binding dei parametri usando i nomi univoci dalla symbol table
+        # Ottieni lo scope della funzione dall'analizzatore semantico
+        function_scope = self.semantic_analyzer.get_node_info(function, 'scope')
+        if function_scope:
+            for param, arg in zip(function.parameters, arguments):
+                try:
+                    # Cerca il parametro nella symbol table dello scope della funzione
+                    param_info = function_scope.lookup_local(param)
+                    if param_info and param_info.kind == SymbolKind.PARAMETER:
+                        # Usa il nome univoco del parametro
+                        function_env.define_variable(param_info.unique_name, arg)
+                    else:
+                        raise SaltinoRuntimeError(f"Parameter '{param}' not found in function scope")
+                except ValueError:
+                    raise SaltinoRuntimeError(f"Parameter '{param}' not found in symbol table")
+        else:
+            raise SaltinoRuntimeError(f"No scope information for function '{function.name}'")
 
         # Pusha il frame della funzione
         frame = self.push_frame(FrameType.FUNCTION_CALL,
@@ -494,7 +555,9 @@ class IterativeSaltinoInterpreter:
             frame.completed = True
         elif isinstance(node, Identifier):
             try:
-                frame.result = frame.environment.get_variable(node.name)
+                # Usa il nome univoco dalla symbol table per accedere alla variabile
+                unique_name = frame.environment.get_unique_name(node, frame.semantic_analyzer)
+                frame.result = frame.environment.get_variable(unique_name)
                 frame.completed = True
             except SaltinoRuntimeError:
                 # Se non è una variabile, potrebbe essere una funzione
@@ -644,9 +707,20 @@ class IterativeSaltinoInterpreter:
             # Creiamo un nuovo ambiente per la funzione
             function_env = self._create_new_environment(self.global_env)
 
-            # Binding dei parametri
-            for param, arg in zip(function.parameters, args_evaluated):
-                function_env.define_variable(param, arg)
+            # Binding dei parametri (in expression function call)
+            function_scope = self.semantic_analyzer.get_node_info(function, 'scope')
+            if function_scope:
+                for param, arg in zip(function.parameters, args_evaluated):
+                    try:
+                        param_info = function_scope.lookup_local(param)
+                        if param_info and param_info.kind == SymbolKind.PARAMETER:
+                            function_env.define_variable(param_info.unique_name, arg)
+                        else:
+                            raise SaltinoRuntimeError(f"Parameter '{param}' not found in function scope")
+                    except ValueError:
+                        raise SaltinoRuntimeError(f"Parameter '{param}' not found in symbol table")
+            else:
+                raise SaltinoRuntimeError(f"No scope information for function '{function.name}'")
 
             # Eseguiamo la funzione
             func_frame = self.push_frame(
@@ -666,15 +740,17 @@ class IterativeSaltinoInterpreter:
             frame.completed = True
         elif isinstance(node, Identifier):
             try:
-                value = frame.environment.get_variable(node.name)
+                # Usa il nome univoco dalla symbol table per accedere alla variabile
+                unique_name = frame.environment.get_unique_name(node, frame.semantic_analyzer)
+                value = frame.environment.get_variable(unique_name)
                 # Verifica che il valore sia un booleano
                 if type(value) is not bool:
                     raise SaltinoRuntimeError(
                         f"Variable '{node.name}' used in condition must be boolean, got {type(value).__name__}")
                 frame.result = value
                 frame.completed = True
-            except SaltinoRuntimeError:
-                raise SaltinoRuntimeError(f"Undefined variable: {node.name}")
+            except SaltinoRuntimeError as e:
+                raise SaltinoRuntimeError(f"Error accessing variable '{node.name}': {e.message}")
         elif isinstance(node, BinaryCondition):
             self._execute_binary_condition(frame)
         elif isinstance(node, UnaryCondition):
@@ -834,9 +910,20 @@ class IterativeSaltinoInterpreter:
             # Creiamo un nuovo ambiente per la funzione
             function_env = self._create_new_environment(self.global_env)
 
-            # Binding dei parametri
-            for param, arg in zip(function.parameters, args_evaluated):
-                function_env.define_variable(param, arg)
+            # Binding dei parametri (in condition function call)
+            function_scope = self.semantic_analyzer.get_node_info(function, 'scope')
+            if function_scope:
+                for param, arg in zip(function.parameters, args_evaluated):
+                    try:
+                        param_info = function_scope.lookup_local(param)
+                        if param_info and param_info.kind == SymbolKind.PARAMETER:
+                            function_env.define_variable(param_info.unique_name, arg)
+                        else:
+                            raise SaltinoRuntimeError(f"Parameter '{param}' not found in function scope")
+                    except ValueError:
+                        raise SaltinoRuntimeError(f"Parameter '{param}' not found in symbol table")
+            else:
+                raise SaltinoRuntimeError(f"No scope information for function '{function.name}'")
 
             # Eseguiamo la funzione
             func_frame = self.push_frame(
@@ -885,7 +972,7 @@ class IterativeSaltinoInterpreter:
             frame.completed = True
 
     def _execute_assignment_frame(self, frame: ExecutionFrame):
-        """Esegue un frame di assegnamento."""
+        """Esegue un frame di assegnamento usando i nomi univoci dalla symbol table."""
         assignment = frame.node
 
         if not frame.state.get('value_evaluated', False):
@@ -897,9 +984,13 @@ class IterativeSaltinoInterpreter:
                 self.push_frame(FrameType.EXPRESSION,
                                 assignment.value, frame.environment)
         else:
-            # Il valore è stato valutato, eseguiamo l'assegnamento
+            # Il valore è stato valutato, eseguiamo l'assegnamento usando il nome univoco
             value = frame.state['value']
-            frame.environment.set_variable(assignment.variable, value)
+            
+            # Ottiene il nome univoco dalla symbol table
+            unique_name = frame.environment.get_unique_name(assignment, frame.semantic_analyzer)
+            frame.environment.set_variable(unique_name, value)
+            
             frame.result = value
             frame.completed = True
 

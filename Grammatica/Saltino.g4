@@ -117,6 +117,7 @@ condNot
 // Livello 4: condizioni atomiche (più forte)
 condAtom
   : espressione relop espressione
+  | espressione                 // chiamate di funzione che ritornano booleani
   | 'true'
   | 'false'
   | ID
