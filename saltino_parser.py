@@ -12,27 +12,27 @@ from AST.ASTVisitor import build_ast
 from AST.ASTNodes import Program
 from antlr4 import InputStream, CommonTokenStream
 from errors.custom_error_listener import create_error_listener
-from errors.parser_errors import ErrorCollector, SaltinoParseError
-from typing import Optional, Tuple
+from errors.parser_errors import SaltinoParseError
+from typing import Optional, Tuple, List, Dict, Any
 
 
-def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optional[Program], ErrorCollector]:
+def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optional[Program], List[Dict[str, Any]], Optional[Any]]:
     """
-    Parsa il codice sorgente Saltino utilizzando il custom error listener.
+    Analizza il codice sorgente Saltino e genera l'AST.
 
     Args:
-        input_text: Il codice sorgente da parsare
-        raise_on_error: Se True, solleva eccezioni in caso di errori di parsing
+        input_text: Il codice sorgente da analizzare
+        raise_on_error: Se True, lancia eccezioni per errori di parsing
 
     Returns:
-        Tupla contenente (AST, ErrorCollector)
+        tuple: (ast, errors, semantic_analyzer) dove:
+               - ast: L'AST del programma (None se ci sono errori)
+               - errors: Lista degli errori di parsing
+               - semantic_analyzer: L'analizzatore semantico utilizzato
 
     Raises:
         SaltinoParseError: Se ci sono errori di parsing e raise_on_error è True
     """
-    # Crea un collettore di errori
-    error_collector = ErrorCollector()
-
     try:
         # Crea lo stream di input
         input_stream = InputStream(input_text)
@@ -40,7 +40,6 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
         # Crea il lexer con custom error listener
         lexer = SaltinoLexer(input_stream)
         lexer_error_listener = create_error_listener()
-        lexer_error_listener.error_collector = error_collector
         lexer.removeErrorListeners()  # Rimuovi i listener di default
         lexer.addErrorListener(lexer_error_listener)
 
@@ -50,19 +49,23 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
         # Crea il parser con custom error listener
         parser = SaltinoParser(token_stream)
         parser_error_listener = create_error_listener()
-        parser_error_listener.error_collector = error_collector
         parser.removeErrorListeners()  # Rimuovi i listener di default
         parser.addErrorListener(parser_error_listener)
 
         # Parsa il programma
         tree = parser.programma()
 
+        # Combina gli errori del lexer e del parser
+        all_errors = lexer_error_listener.get_errors() + parser_error_listener.get_errors()
+
         # Controlla se ci sono stati errori di parsing
-        if error_collector.has_errors():
+        if all_errors:
             if raise_on_error:
-                raise SaltinoParseError("Parsing failed with errors")
+                error_msg = "\n".join([f"Riga {err['line']}, colonna {err['column']}: {err['message']}" 
+                                     for err in all_errors])
+                raise SaltinoParseError(f"Parsing failed with errors:\n{error_msg}")
             else:
-                return None, error_collector, None
+                return None, all_errors, None
 
         # Costruisci l'AST se non ci sono errori
         ast = build_ast(tree)
@@ -70,46 +73,52 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
         # Esegui l'analisi semantica
         from AST.semantic_analyzer import SemanticAnalyzer
         semantic_analyzer = SemanticAnalyzer(debug_mode=False)
-        semantic_analyzer.error_collector = error_collector  # Passa l'error collector
 
         try:
             semantic_analyzer.analyze(ast)
+            # Se l'analisi semantica ha successo, non ci sono errori aggiuntivi
+            return ast, all_errors, semantic_analyzer
         except Exception as semantic_error:
-            # Gli errori semantici sono già stati aggiunti all'error_collector
-            # dall'analizzatore semantico modificato
-            pass
-
-        # Controlla se ci sono errori (inclusi quelli semantici)
-        if error_collector.has_errors():
+            # Aggiungi l'errore semantico agli errori esistenti
+            semantic_err = {
+                'line': getattr(semantic_error, 'line', 0),
+                'column': getattr(semantic_error, 'column', 0),
+                'message': str(semantic_error),
+                'type': 'semantic'
+            }
+            all_errors.append(semantic_err)
+            
             if raise_on_error:
-                raise SaltinoParseError("Analysis failed with errors")
+                raise semantic_error
             else:
-                return None, error_collector, None
-
-        # Se ci sono stati warning ma non errori, li includiamo nel report
-        if error_collector.has_warnings():
-            print("Warning durante il parsing:")
-            for warning in error_collector.get_warnings():
-                print(f"  - {warning}")
-
-        return ast, error_collector, semantic_analyzer
+                return None, all_errors, semantic_analyzer
 
     except Exception as e:
         # Se è già un'eccezione Saltino personalizzata, rilanciala
-        if hasattr(e, 'position') and hasattr(e, 'message'):
+        if isinstance(e, SaltinoParseError):
             if raise_on_error:
-                raise e
+                raise
             else:
-                return None, error_collector, None
+                # Crea un errore generico
+                generic_error = {
+                    'line': 0,
+                    'column': 0,
+                    'message': str(e),
+                    'type': 'parsing'
+                }
+                return None, [generic_error], None
+        
+        # Per altre eccezioni, crea un errore generico
+        if raise_on_error:
+            raise SaltinoParseError(f"Unexpected error during parsing: {str(e)}")
         else:
-            # Altrimenti wrappala in un'eccezione generica
-            parse_error = SaltinoParseError(
-                f"Errore critico durante il parsing: {str(e)}")
-            if raise_on_error:
-                raise parse_error
-            else:
-                error_collector.add_error(parse_error)
-                return None, error_collector, None
+            generic_error = {
+                'line': 0,
+                'column': 0,
+                'message': f"Errore inaspettato durante il parsing: {str(e)}",
+                'type': 'unexpected'
+            }
+            return None, [generic_error], None
 
 
 def parse_saltino_interactive(input_text: str) -> Optional[Program]:
@@ -123,21 +132,17 @@ def parse_saltino_interactive(input_text: str) -> Optional[Program]:
         L'AST del programma o None se ci sono errori
     """
     try:
-        ast, error_collector, semantic_analyzer = parse_saltino(
+        ast, errors, semantic_analyzer = parse_saltino(
             input_text, raise_on_error=False)
 
-        if error_collector.has_errors():
+        if errors:
             print("❌ Errori durante il parsing:")
-            for error in error_collector.errors:
-                print(f"  - {error}")
+            for error in errors:
+                error_type = error.get('type', 'unknown')
+                print(f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
             return None
 
-        if error_collector.has_warnings():
-            print("⚠️  Warning durante il parsing:")
-            for warning in error_collector.get_warnings():
-                print(f"  - {warning}")
-
-        print("✅ Parsing completato con successo")
+        print("✅ Parsing completato con successo!")
         return ast
 
     except Exception as e:

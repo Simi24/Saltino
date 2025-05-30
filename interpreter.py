@@ -24,6 +24,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
+#TODO: fix duplicate functions and duplicate parameters in function calls
 class IterativeSaltinoInterpreter:
     """
     Interprete Iterativo per il linguaggio Saltino con supporto per analisi semantica.
@@ -856,19 +857,16 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
         with open(filename, 'r') as file:
             program_text = file.read()
 
-        ast, error_collector, semantic_analyzer = parse_saltino(
+        ast, errors, semantic_analyzer = parse_saltino(
             program_text, raise_on_error=False)
 
         # Controlla se ci sono stati errori di parsing
-        if error_collector.has_errors():
-            for error in error_collector.errors:
-                raise error.error
-
-        # Se ci sono solo warning, continua ma li mostra
-        if error_collector.has_warnings():
-            print("⚠️  Warning durante il parsing:")
-            for warning in error_collector.get_warnings():
-                print(f"  - {warning}")
+        if errors:
+            print("❌ Errori durante il parsing:")
+            for error in errors:
+                error_type = error.get('type', 'unknown')
+                print(f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
+            raise SaltinoRuntimeError("Errori di parsing impediscono l'esecuzione")
 
         if ast is None:
             raise SaltinoRuntimeError("Errore nella costruzione dell'AST")
