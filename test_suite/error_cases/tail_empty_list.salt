@@ -1,0 +1,5 @@
+// Test di tail su lista vuota
+def main() {
+    empty = []
+    return tail(empty)  // Dovrebbe generare errore di runtime
+}

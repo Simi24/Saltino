@@ -1,0 +1,5 @@
+// Test per errore lessicale: carattere '$' non valido
+def main() {
+    $variable = 10  // '$' non è supportato negli identificatori
+    return $variable
+}

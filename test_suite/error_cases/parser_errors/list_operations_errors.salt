@@ -1,0 +1,11 @@
+// Test per errori in operazioni su liste
+def main() {
+    lista = [1, 2, 3
+    // Errore: manca ']' di chiusura della lista
+    
+    primo = head(lista  // Errore: manca ')' di chiusura
+    resto = tail lista)  // Errore: manca '(' di apertura
+    
+    nuova = primo :: resto
+    return nuova
+}

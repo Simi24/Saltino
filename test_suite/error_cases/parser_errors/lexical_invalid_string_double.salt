@@ -1,0 +1,5 @@
+// Test per errore lessicale: stringhe non supportate
+def main() {
+    x = "hello world"  // Le stringhe non sono supportate in Saltino
+    return x
+}

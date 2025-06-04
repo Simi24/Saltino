@@ -1,0 +1,29 @@
+// Test di liste create dinamicamente
+def main() {
+    return build_list(5)
+}
+
+def build_list(n) {
+    if (n <= 0) {
+        return sum_list([])
+    } else {
+        list = n :: build_list_helper(n - 1)
+        return sum_list(list)
+    }
+}
+
+def build_list_helper(n) {
+    if (n <= 0) {
+        return []
+    } else {
+        return n :: build_list_helper(n - 1)
+    }
+}
+
+def sum_list(list) {
+    if (list == []) {
+        return 0
+    } else {
+        return head(list) + sum_list(tail(list))
+    }
+}

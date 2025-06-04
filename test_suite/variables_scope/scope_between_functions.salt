@@ -1,0 +1,12 @@
+// Test di scope tra funzioni
+def main() {
+    x = 100
+    return helper() + x
+}
+
+def helper() {
+    x = 50  // Variabile locale, non interferisce con main
+    return x
+}
+
+// Il risultato dovrebbe essere 50 + 100 = 150

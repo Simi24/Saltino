@@ -1,0 +1,16 @@
+// Test di liste annidate con head e tail
+def main() {
+    // Lista con operazioni multiple head/tail
+    numbers = 10 :: 20 :: 30 :: 40 :: []
+    
+    // Varie operazioni di accesso
+    first = head(numbers)
+    second = head(tail(numbers))
+    third = head(tail(tail(numbers)))
+    fourth = head(tail(tail(tail(numbers))))
+    
+    // Test con parentesi
+    middle_two = head(tail(tail(numbers)))
+    
+    return first + second + third + fourth + middle_two
+}

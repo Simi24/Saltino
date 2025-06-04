@@ -1,0 +1,12 @@
+// Test con espressioni molto complesse
+def main() {
+    a = 2
+    b = 3
+    c = 4
+    d = 5
+    
+    // Espressione complessa con precedenze multiple
+    result = a + b * c ^ d - (a * b + c) / (d - a) + b ^ c % d
+    
+    return result
+}

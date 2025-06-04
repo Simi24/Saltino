@@ -1,0 +1,14 @@
+// Test di parametri che nascondono variabili globali
+def main() {
+    x = 10
+    y = 20
+    return test_function(5, 15) + x + y
+}
+
+def test_function(x, y) {
+    // x e y sono parametri che nascondono le variabili di main
+    z = x + y  // z = 5 + 15 = 20
+    return z
+}
+
+// Il risultato dovrebbe essere 20 + 10 + 20 = 50

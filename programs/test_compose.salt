@@ -1,0 +1,12 @@
+// Test version of compose.salt with no main parameters
+def double(x) {
+  return x * 2
+}
+
+def increment(x) {
+  return x + 1
+}
+
+def main() {
+  return double(increment(5))
+}

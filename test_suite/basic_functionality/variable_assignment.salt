@@ -1,0 +1,7 @@
+// Test di assegnamento di variabili
+def main() {
+    x = 10
+    y = 20
+    z = x + y
+    return z
+}

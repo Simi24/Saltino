@@ -1,0 +1,6 @@
+// Test di operazioni di tipo errato - operatori logici su interi
+def main() {
+    a = 10
+    b = 20
+    return a and b  // Dovrebbe generare errore di tipo
+}

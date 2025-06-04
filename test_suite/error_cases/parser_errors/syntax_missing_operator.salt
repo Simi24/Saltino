@@ -1,0 +1,5 @@
+// Test per errore sintattico: operatore mancante
+def main() {
+    x = 5 3  // Manca l'operatore tra i due numeri
+    return x
+}

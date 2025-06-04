@@ -1,0 +1,14 @@
+// Test di blocchi vuoti e nested
+def main() {
+    x = 5
+    {
+        // Blocco vuoto
+    }
+    {
+        y = 10
+        {
+            z = x + y
+        }
+    }
+    return x + 10
+}

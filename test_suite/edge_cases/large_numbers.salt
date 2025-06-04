@@ -1,0 +1,6 @@
+// Test con numeri molto grandi
+def main() {
+    big1 = 999999999
+    big2 = 888888888
+    return big1 + big2
+}

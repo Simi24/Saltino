@@ -1,0 +1,5 @@
+// Test per errore sintattico: parentesi non bilanciate
+def main() {
+    x = (5 + 3  // Manca la parentesi di chiusura
+    return x
+}

@@ -1,0 +1,18 @@
+// Test di associatività dell'operatore :: (associativo a destra)
+def main() {
+    // 1 :: 2 :: 3 :: [] deve essere interpretato come 1 :: (2 :: (3 :: []))
+    list1 = 1 :: 2 :: 3 :: []
+    list2 = 1 :: (2 :: (3 :: []))
+    
+    // Entrambe le liste dovrebbero essere identiche
+    // Testiamo accedendo agli elementi
+    first1 = head(list1)
+    second1 = head(tail(list1))
+    third1 = head(tail(tail(list1)))
+    
+    first2 = head(list2)
+    second2 = head(tail(list2))
+    third2 = head(tail(tail(list2)))
+    
+    return first1 + second1 + third1 + first2 + second2 + third2
+}

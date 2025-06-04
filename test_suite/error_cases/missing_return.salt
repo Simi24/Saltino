@@ -1,0 +1,11 @@
+// Test di funzione senza return
+def main() {
+    return no_return_function()  // Dovrebbe generare errore
+}
+
+def no_return_function() {
+    x = 10
+    y = 20
+    z = x + y
+    // Manca return - dovrebbe generare errore
+}

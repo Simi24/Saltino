@@ -1,0 +1,20 @@
+// Test di ricorsione mutua
+def main() {
+    return is_even(8) + is_odd(7)
+}
+
+def is_even(n) {
+    if (n == 0) {
+        return 1  // true
+    } else {
+        return is_odd(n - 1)
+    }
+}
+
+def is_odd(n) {
+    if (n == 0) {
+        return 0  // false
+    } else {
+        return is_even(n - 1)
+    }
+}

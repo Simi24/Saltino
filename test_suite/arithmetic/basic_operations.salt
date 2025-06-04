@@ -1,0 +1,11 @@
+// Test di operatori aritmetici di base
+def main() {
+    a = 15
+    b = 4
+    sum = a + b
+    diff = a - b  
+    prod = a * b
+    div = a / b
+    mod = a % b
+    return sum + diff + prod + div + mod
+}

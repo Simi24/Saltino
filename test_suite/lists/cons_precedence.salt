@@ -1,0 +1,13 @@
+// Test di precedenza tra :: e operatori aritmetici
+def main() {
+    // Test: 1 + 2 :: [] deve essere (1 + 2) :: [] = 3 :: []
+    list1 = 1 + 2 :: []
+    
+    // Test: 2 * 3 :: 4 :: [] deve essere (2 * 3) :: 4 :: [] = 6 :: 4 :: []
+    list2 = 2 * 3 :: 4 :: []
+    
+    result1 = head(list1)
+    result2 = head(list2) + head(tail(list2))
+    
+    return result1 + result2
+}

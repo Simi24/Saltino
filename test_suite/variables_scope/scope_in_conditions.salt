@@ -1,0 +1,16 @@
+// Test di scope in condizioni if-else
+def main() {
+    x = 5
+    y = 0
+    
+    if (x > 0) {
+        z = 10
+        y = z + x  // y = 15
+    } else {
+        z = 20
+        y = z + x  // Non eseguito
+    }
+    
+    // z non è visibile qui
+    return y  // Dovrebbe restituire 15
+}

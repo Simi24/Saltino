@@ -1,0 +1,5 @@
+// Test per errore sintattico: manca il simbolo '=' nell'assegnamento
+def main() {
+    x 5 + 3  // Manca il simbolo '=' 
+    return x
+}

@@ -1,0 +1,5 @@
+// Test per errore lessicale: stringhe con apici singoli non supportate
+def main() {
+    x = 'hello'  // Le stringhe non sono supportate in Saltino
+    return x
+}

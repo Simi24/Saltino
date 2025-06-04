@@ -1,0 +1,12 @@
+// Test per errore semantico: nome di funzione duplicato
+def main() {
+    return helper(5)
+}
+
+def helper(x) {
+    return x + 1
+}
+
+def helper(y) {  // Errore: funzione helper definita due volte
+    return y * 2
+}

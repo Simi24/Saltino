@@ -1,0 +1,8 @@
+// Test di operatori unari
+def main() {
+    x = 10
+    y = -x
+    z = +15
+    w = -(-y)
+    return z + w
+}

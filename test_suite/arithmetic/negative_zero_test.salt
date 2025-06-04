@@ -1,0 +1,16 @@
+// Test delle operazioni con numeri negativi e zero
+def main() {
+    a = -5
+    b = 0
+    c = 3
+    
+    // Test con negativi
+    neg_sum = a + c  // -5 + 3 = -2
+    neg_mult = a * c // -5 * 3 = -15
+    
+    // Test con zero
+    zero_mult = b * c // 0 * 3 = 0
+    zero_add = b + c  // 0 + 3 = 3
+    
+    return neg_sum + neg_mult + zero_mult + zero_add
+}

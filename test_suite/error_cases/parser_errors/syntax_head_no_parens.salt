@@ -1,0 +1,6 @@
+// Test per errore sintattico: head/tail senza parentesi
+def main() {
+    lista = [1, 2, 3]
+    x = head lista  // Mancano le parentesi: head(lista)
+    return x
+}

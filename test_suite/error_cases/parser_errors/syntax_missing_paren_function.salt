@@ -1,0 +1,4 @@
+// Test per errore sintattico: parentesi mancante nella definizione di funzione
+def main( {  // Manca la parentesi di chiusura
+    return 42
+}

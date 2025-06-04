@@ -1,0 +1,14 @@
+// Test di funzioni senza parametri
+def main() {
+    return get_constant() + get_another_constant()
+}
+
+def get_constant() {
+    return 42
+}
+
+def get_another_constant() {
+    x = 10
+    y = 20
+    return x + y
+}

@@ -1,0 +1,8 @@
+// Test per errori multipli: lessicali e sintattici
+def main() {
+    x = 5 @ 3  // Errore lessicale: '@' non valido
+    y = (x + 2  // Errore sintattico: parentesi non bilanciate
+    if y > 5 {  // Errore sintattico: mancano parentesi nella condizione
+        return y
+    return false  // Errore sintattico: manca graffa di chiusura dell'if
+}

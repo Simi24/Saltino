@@ -1,0 +1,5 @@
+// Test per errore lessicale: carattere '@' non valido
+def main() {
+    x = 5 @ 3  // '@' non è un operatore valido
+    return x
+}

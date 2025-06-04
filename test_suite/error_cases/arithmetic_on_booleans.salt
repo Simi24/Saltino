@@ -1,0 +1,6 @@
+// Test di operazioni di tipo errato - operatori aritmetici su booleani
+def main() {
+    a = true
+    b = false
+    return a + b  // Dovrebbe generare errore di tipo
+}

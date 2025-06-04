@@ -1,0 +1,5 @@
+// Test di head su tipo non lista
+def main() {
+    x = 42
+    return head(x)  // Dovrebbe generare errore di tipo
+}

@@ -1,0 +1,13 @@
+// Test di costruzione base di liste
+def main() {
+    empty = []
+    single = 1 :: []
+    multiple = 1 :: 2 :: 3 :: []
+    
+    // Test head e tail
+    first = head(single)
+    rest = tail(multiple)
+    second = head(rest)
+    
+    return first + second
+}

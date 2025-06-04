@@ -1,0 +1,7 @@
+// Test per errore semantico: condizione in contesto sbagliato
+def main() {
+    // Tentativo di assegnare una condizione complessa a variabile
+    x = (5 > 3) and (true or false)  // Potrebbe essere problematico secondo il contesto
+    y = x + 1  // Tentare operazioni aritmetiche su booleani
+    return y
+}
