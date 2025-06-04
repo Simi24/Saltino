@@ -73,9 +73,12 @@ def parse_saltino(input_text: str, raise_on_error: bool = True, debug_mode = Fal
 
         # Esegui l'analisi semantica
         from AST.semantic_analyzer import SemanticAnalyzer
+        from tail_recursive_transformer import TailCallTransformer
         semantic_analyzer = SemanticAnalyzer(debug_mode=debug_mode)
+        tail_recursive_transformer = TailCallTransformer()
 
         try:
+            ast = tail_recursive_transformer.transform_program(ast)
             semantic_analyzer.analyze(ast)
             # Se l'analisi semantica ha successo, non ci sono errori aggiuntivi
             return ast, all_errors, semantic_analyzer

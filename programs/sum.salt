@@ -1,0 +1,13 @@
+def main() {
+    l = 1 :: 2 :: []
+    ret = sum(l)
+    return ret
+}
+
+def sum(lst) {
+  if (lst == []) {
+    return 0
+  } else {
+    return head(lst) + sum(tail(lst))
+  }
+}
