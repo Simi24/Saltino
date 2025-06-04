@@ -52,6 +52,15 @@ class Environment:
             if scope:
                 try:
                     symbol_info = scope.lookup(node.name)
+                    # Check if it's marked as uninitialized
+                    is_uninitialized = semantic_analyzer.get_node_info(
+                        symbol_info, 'uninitialized', False)
+                    if is_uninitialized:
+                        raise SaltinoRuntimeError(
+                            f"UnboundLocalError: cannot access local variable '{node.name}' "
+                            f"where it is not associated with a value. "
+                            f"(Variable '{node.name}' is assigned in this scope, making it local, "
+                            f"but it's used before assignment)")
                     return symbol_info.unique_name
                 except ValueError:
                     raise SaltinoRuntimeError(

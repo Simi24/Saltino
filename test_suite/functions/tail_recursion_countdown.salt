@@ -1,0 +1,12 @@
+// Test di count down con tail recursion
+def main() {
+    return countdown_tail(10)
+}
+
+def countdown_tail(n) {
+    if (n <= 0) {
+        return 0
+    } else {
+        return countdown_tail(n - 1)
+    }
+}

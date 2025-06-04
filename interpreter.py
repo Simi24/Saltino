@@ -176,9 +176,32 @@ class IterativeSaltinoInterpreter:
         # Crea un nuovo ambiente per la funzione
         function_env = self._create_new_environment(self.global_env)
 
-        # Binding dei parametri
+        # Binding dei parametri usando i nomi univoci
         for param, arg in zip(function.parameters, arguments):
-            function_env.define_variable(param, arg)
+            # Ottieni il nome univoco del parametro dalla symbol table
+            # Cerca nelle informazioni del nodo della funzione
+            function_scope = self.semantic_analyzer.get_node_info(
+                function, 'scope')
+            if function_scope:
+                try:
+                    param_info = function_scope.lookup(param)
+                    unique_param_name = param_info.unique_name
+                    function_env.define_variable(unique_param_name, arg)
+                    if self.debug_mode:
+                        print(
+                            f"[PARAM] Bound parameter {param} (unique: {unique_param_name}) = {arg}")
+                except ValueError:
+                    # Fallback al nome originale se non si trova nella symbol table
+                    function_env.define_variable(param, arg)
+                    if self.debug_mode:
+                        print(
+                            f"[PARAM] Bound parameter {param} (original name) = {arg}")
+            else:
+                # Fallback al nome originale se non c'è scope information
+                function_env.define_variable(param, arg)
+                if self.debug_mode:
+                    print(
+                        f"[PARAM] Bound parameter {param} (original name, no scope) = {arg}")
 
         # Pusha il frame della funzione
         frame = self.push_frame(FrameType.FUNCTION_CALL,
@@ -988,8 +1011,10 @@ class IterativeSaltinoInterpreter:
         """Stampa le statistiche di esecuzione per l'analisi TCO."""
         if self.debug_mode:
             print(f"\n[STATS] Statistiche di Esecuzione:")
-            print(f"[STATS] Profondità massima dello stack: {self.max_stack_depth}")
-            print(f"[STATS] Chiamate di funzione totali: {self.function_call_count}")
+            print(
+                f"[STATS] Profondità massima dello stack: {self.max_stack_depth}")
+            print(
+                f"[STATS] Chiamate di funzione totali: {self.function_call_count}")
             print(f"[STATS] Tail call ottimizzate: {self.tail_call_count}")
             if self.function_call_count > 0:
                 optimization_ratio = (

@@ -38,6 +38,20 @@ Questa directory contiene una suite completa di test per validare l'interprete d
 - `no_parameters.salt`: Funzioni senza parametri
 - `nested_calls.salt`: Chiamate annidate
 - `returning_conditions.salt`: Funzioni che restituiscono condizioni
+- **Tail Recursion Tests** (Ottimizzazione delle Tail Call):
+  - `tail_recursion_factorial.salt`: Factorial implementato con tail recursion
+  - `tail_recursion_fibonacci.salt`: Fibonacci con tail recursion e accumulatore
+  - `tail_recursion_sum.salt`: Somma di numeri naturali con tail recursion
+  - `tail_recursion_power.salt`: Potenza/esponenziazione con tail recursion
+  - `tail_recursion_countdown.salt`: Countdown semplice (test caso base)
+  - `tail_recursion_gcd.salt`: Greatest Common Divisor con algoritmo di Euclide
+  - `tail_recursion_mutual.salt`: Tail recursion mutua (even/odd test)
+  - `tail_recursion_list_length.salt`: Calcolo lunghezza lista simulata
+  - `tail_recursion_reverse.salt`: Reverse di numero (simula lista)
+  - `tail_recursion_deep.salt`: Test di ricorsione profonda (1000 livelli)
+  - `tail_vs_non_tail_comparison.salt`: Confronto tra tail e non-tail recursion
+  - `tail_recursion_complex.salt`: Multiple tail calls in branches diverse
+  - `tail_recursion_edge_cases.salt`: Edge cases (zero, negativi, caso base)
 
 ### 6. **variables_scope/** - Test di Scope delle Variabili
 - `basic_scope.salt`: Scope di base

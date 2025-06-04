@@ -1,0 +1,12 @@
+// Test di sum con tail recursion
+def main() {
+    return sum_tail(100, 0)
+}
+
+def sum_tail(n, acc) {
+    if (n <= 0) {
+        return acc
+    } else {
+        return sum_tail(n - 1, acc + n)
+    }
+}
