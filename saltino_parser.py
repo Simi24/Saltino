@@ -16,7 +16,7 @@ from errors.parser_errors import SaltinoParseError
 from typing import Optional, Tuple, List, Dict, Any
 
 
-def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optional[Program], List[Dict[str, Any]], Optional[Any]]:
+def parse_saltino(input_text: str, raise_on_error: bool = True, debug_mode = False) -> Tuple[Optional[Program], List[Dict[str, Any]], Optional[Any]]:
     """
     Analizza il codice sorgente Saltino e genera l'AST.
 
@@ -73,7 +73,7 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
 
         # Esegui l'analisi semantica
         from AST.semantic_analyzer import SemanticAnalyzer
-        semantic_analyzer = SemanticAnalyzer(debug_mode=False)
+        semantic_analyzer = SemanticAnalyzer(debug_mode=debug_mode)
 
         try:
             semantic_analyzer.analyze(ast)

@@ -260,6 +260,9 @@ class SemanticAnalyzer:
         """Visita un'istruzione return"""
         self.set_node_info(node, scope=self.current_scope)
         node.value.accept(self)
+        # Tail Call Optimization annotation: if the return value is a FunctionCall, mark it
+        if isinstance(node.value, FunctionCall):
+            self.set_node_info(node.value, is_potential_tail_call=True)
 
     def visit_binary_expression(self, node: BinaryExpression):
         """Visita un'espressione binaria"""

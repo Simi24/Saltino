@@ -24,7 +24,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
-#TODO: fix duplicate functions and duplicate parameters in function calls
+# TODO: correggere funzioni duplicate e parametri duplicati nelle chiamate di funzione
 class IterativeSaltinoInterpreter:
     """
     Interprete Iterativo per il linguaggio Saltino con supporto per analisi semantica.
@@ -41,6 +41,11 @@ class IterativeSaltinoInterpreter:
         self.result_stack: List[Any] = []
         # Analizzatore semantico
         self.semantic_analyzer: Optional[SemanticAnalyzer] = None
+
+        # Monitoraggio dello stack per l'analisi TCO
+        self.max_stack_depth = 0
+        self.function_call_count = 0
+        self.tail_call_count = 0
 
         # Dispatch table per le operazioni binarie
         self.binary_operators = SaltinoOperators.get_binary_operators()
@@ -113,6 +118,20 @@ class IterativeSaltinoInterpreter:
         frame = ExecutionFrame(
             frame_type, node, environment, self.semantic_analyzer)
         self.execution_stack.append(frame)
+
+        # Traccia la profondità dello stack per l'analisi TCO
+        current_depth = len(self.execution_stack)
+        if current_depth > self.max_stack_depth:
+            self.max_stack_depth = current_depth
+
+        # Conta le chiamate di funzione
+        if frame_type == FrameType.FUNCTION_CALL:
+            self.function_call_count += 1
+
+        if self.debug_mode:
+            print(
+                f"[STACK] Pushato frame {frame_type.name}. Profondità attuale: {current_depth}")
+
         return frame
 
     def pop_frame(self) -> Optional[ExecutionFrame]:
@@ -286,9 +305,30 @@ class IterativeSaltinoInterpreter:
             parent_frame.state['value'] = result
             parent_frame.state['value_evaluated'] = True
         elif parent_frame.frame_type == FrameType.RETURN:
-            # Il valore del return è stato valutato
-            parent_frame.state['return_value'] = result
-            parent_frame.state['value_evaluated'] = True
+            # Supporto TCO: gestisce le fasi di valutazione delle tail call
+            tco_phase = parent_frame.state.get('tco_phase')
+            if tco_phase == 'eval_callee':
+                # Memorizza l'oggetto funzione valutato
+                parent_frame.state['tail_call_function_value'] = result
+                if self.debug_mode:
+                    print(f"[TCO] Callee evaluato: {result}")
+                # Avanza alla fase di valutazione degli argomenti
+                parent_frame.state['tco_phase'] = 'eval_args'
+            elif tco_phase == 'eval_args':
+                # Siamo nella fase di valutazione degli argomenti TCO
+                args = parent_frame.node.value.arguments
+                idx = parent_frame.state['tail_call_current_arg_index']
+                parent_frame.state['tail_call_evaluated_args'].append(result)
+                parent_frame.state['tail_call_current_arg_index'] += 1
+                if self.debug_mode:
+                    print(f"[TCO] Argument {idx} evaluated: {result}")
+                # If all arguments are evaluated, move to next phase
+                if parent_frame.state['tail_call_current_arg_index'] >= len(args):
+                    parent_frame.state['tco_phase'] = 'ready_to_tailcall'
+            else:
+                # Standard return value evaluation
+                parent_frame.state['return_value'] = result
+                parent_frame.state['value_evaluated'] = True
 
     def _execute_function_frame(self, frame: ExecutionFrame):
         """Esegue un frame di chiamata di funzione."""
@@ -585,7 +625,7 @@ class IterativeSaltinoInterpreter:
             self.push_frame(FrameType.CONDITION,
                             condition.left, frame.environment)
         elif current_index == 1:
-            # Short-circuit evaluation per and e or
+            # Valutazione short-circuit per and e or
             left_value = operands_evaluated[0]
 
             # Controllo di tipo per il primo operando
@@ -822,33 +862,140 @@ class IterativeSaltinoInterpreter:
             frame.completed = True
 
     def _execute_return_frame(self, frame: ExecutionFrame):
-        """Esegue un frame di return."""
+        """Esegue un frame di return con supporto TCO."""
         return_stmt = frame.node
 
-        if not frame.state.get('value_evaluated', False):
-            # Valutiamo il valore del return
-            if self._is_condition_node(return_stmt.value):
-                self.push_frame(FrameType.CONDITION,
-                                return_stmt.value, frame.environment)
-            else:
+        # Controlla per l'Ottimizzazione delle Tail Call
+        is_tail_call = False
+        if isinstance(return_stmt.value, FunctionCall) and self.semantic_analyzer:
+            is_tail_call = self.semantic_analyzer.get_node_info(
+                return_stmt.value, 'is_potential_tail_call', False)
+
+        if is_tail_call:
+            # TCO: processo multi-fase
+            if self.debug_mode:
+                print(
+                    f"[TCO] Tail call rilevata nel return statement: {return_stmt.value}")
+            if 'tco_phase' not in frame.state:
+                # Fase 1: Valuta il callee (oggetto funzione)
+                frame.state['tco_phase'] = 'eval_callee'
+                frame.state['tail_call_function_value'] = None
+                frame.state['tail_call_evaluated_args'] = []
+                frame.state['tail_call_current_arg_index'] = 0
+                if self.debug_mode:
+                    print(
+                        f"[TCO] Fase 1: Valutazione del callee per tail call: {return_stmt.value.function}")
                 self.push_frame(FrameType.EXPRESSION,
-                                return_stmt.value, frame.environment)
+                                return_stmt.value.function, frame.environment)
+            elif frame.state['tco_phase'] == 'eval_args':
+                # Wait for arguments to be evaluated in _handle_child_result
+                args = return_stmt.value.arguments
+                idx = frame.state['tail_call_current_arg_index']
+                if idx < len(args):
+                    arg = args[idx]
+                    if self.debug_mode:
+                        print(f"[TCO] Valutazione argomento {idx}: {arg}")
+                    if self._is_condition_node(arg):
+                        self.push_frame(FrameType.CONDITION,
+                                        arg, frame.environment)
+                    else:
+                        self.push_frame(FrameType.EXPRESSION,
+                                        arg, frame.environment)
+                # else: gestito da tco_phase 'ready_to_tailcall' quando tutti gli argomenti sono pronti
+            elif frame.state['tco_phase'] == 'ready_to_tailcall':
+                if self.debug_mode:
+                    print(
+                        f"[TCO] Phase 3: Performing stack manipulation for tail call.")
+                # Phase 3: Stack manipulation for TCO
+                # Pop RETURN, BLOCK, FUNCTION_CALL frames
+                # (RETURN is current frame)
+                self.pop_frame()  # Pop RETURN
+                # Pop BLOCK (function body)
+                if self.execution_stack and self.execution_stack[-1].frame_type == FrameType.BLOCK:
+                    self.pop_frame()
+                # Pop FUNCTION_CALL (current function)
+                if self.execution_stack and self.execution_stack[-1].frame_type == FrameType.FUNCTION_CALL:
+                    self.pop_frame()
+                # Prepare new environment for the tail call
+                function_obj = frame.state['tail_call_function_value']
+                args = frame.state['tail_call_evaluated_args']
+                function_env = self._create_new_environment(self.global_env)
+                # Bind parameters using semantic info
+                if self.semantic_analyzer:
+                    function_scope = self.semantic_analyzer.get_node_info(
+                        function_obj, 'scope')
+                    if function_scope:
+                        for param, arg in zip(function_obj.parameters, args):
+                            try:
+                                param_info = function_scope.lookup_local(param)
+                                if param_info and param_info.kind == SymbolKind.PARAMETER:
+                                    function_env.define_variable(
+                                        param_info.unique_name, arg)
+                                    if self.debug_mode:
+                                        print(
+                                            f"[TCO] Bound parameter {param} (unique: {param_info.unique_name}) = {arg}")
+                                else:
+                                    raise SaltinoRuntimeError(
+                                        f"Parameter '{param}' not found in function scope")
+                            except ValueError:
+                                raise SaltinoRuntimeError(
+                                    f"Parameter '{param}' not found in symbol table")
+                    else:
+                        raise SaltinoRuntimeError(
+                            f"No scope information for function '{function_obj.name}'")
+                # Push new FUNCTION_CALL frame for the tail call
+                self.tail_call_count += 1  # Count successful tail call optimization
+                if self.debug_mode:
+                    print(
+                        f"[TCO] Pushing new FUNCTION_CALL frame for tail call: {function_obj.name}({args})")
+                func_frame = self.push_frame(
+                    FrameType.FUNCTION_CALL, function_obj, function_env)
+                func_frame.state['function'] = function_obj
+                func_frame.state['body_executed'] = False
+                # Mark this frame as completed
+                frame.completed = True
+            else:
+                # Should not reach here
+                raise SaltinoRuntimeError("Invalid TCO phase in return frame")
         else:
-            # Il valore è stato valutato
-            return_value = frame.state['return_value']
+            # Logica originale (non-tail call)
+            if not frame.state.get('value_evaluated', False):
+                # Valutiamo il valore del return
+                if self._is_condition_node(return_stmt.value):
+                    self.push_frame(FrameType.CONDITION,
+                                    return_stmt.value, frame.environment)
+                else:
+                    self.push_frame(FrameType.EXPRESSION,
+                                    return_stmt.value, frame.environment)
+            else:
+                # Il valore è stato valutato
+                return_value = frame.state['return_value']
 
-            # Dobbiamo propagare il return fino al frame della funzione
-            # Rimuoviamo tutti i frame fino alla funzione
-            while self.execution_stack:
-                current = self.pop_frame()
-                if current.frame_type == FrameType.FUNCTION_CALL:
-                    # Impostiamo il risultato e completiamo la funzione
-                    current.result = return_value
-                    current.completed = True
-                    self.execution_stack.append(current)
-                    break
+                # Dobbiamo propagare il return fino al frame della funzione
+                # Rimuoviamo tutti i frame fino alla funzione
+                while self.execution_stack:
+                    current = self.pop_frame()
+                    if current.frame_type == FrameType.FUNCTION_CALL:
+                        # Impostiamo il risultato e completiamo la funzione
+                        current.result = return_value
+                        current.completed = True
+                        self.execution_stack.append(current)
+                        break
 
-            frame.completed = True
+                frame.completed = True
+
+    def print_execution_stats(self):
+        """Stampa le statistiche di esecuzione per l'analisi TCO."""
+        if self.debug_mode:
+            print(f"\n[STATS] Statistiche di Esecuzione:")
+            print(f"[STATS] Profondità massima dello stack: {self.max_stack_depth}")
+            print(f"[STATS] Chiamate di funzione totali: {self.function_call_count}")
+            print(f"[STATS] Tail call ottimizzate: {self.tail_call_count}")
+            if self.function_call_count > 0:
+                optimization_ratio = (
+                    self.tail_call_count / self.function_call_count) * 100
+                print(
+                    f"[STATS] Rapporto di ottimizzazione TCO: {optimization_ratio:.1f}%")
 
 
 def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
@@ -858,15 +1005,17 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
             program_text = file.read()
 
         ast, errors, semantic_analyzer = parse_saltino(
-            program_text, raise_on_error=False)
+            program_text, raise_on_error=False, debug_mode=debug_mode)
 
         # Controlla se ci sono stati errori di parsing
         if errors:
             print("❌ Errori durante il parsing:")
             for error in errors:
                 error_type = error.get('type', 'unknown')
-                print(f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
-            raise SaltinoRuntimeError("Errori di parsing impediscono l'esecuzione")
+                print(
+                    f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
+            raise SaltinoRuntimeError(
+                "Errori di parsing impediscono l'esecuzione")
 
         if ast is None:
             raise SaltinoRuntimeError("Errore nella costruzione dell'AST")
@@ -875,6 +1024,9 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
         interpreter = IterativeSaltinoInterpreter(debug_mode=debug_mode)
         interpreter.semantic_analyzer = semantic_analyzer  # Passa il semantic analyzer
         result = interpreter.execute_program(ast)
+
+        # Stampa le statistiche di esecuzione
+        interpreter.print_execution_stats()
 
         return result
 
