@@ -188,3 +188,5 @@ cython_debug/
 .cursorindexingignore
 
 /reports
+interpreter_old.py
+tasks.md
