@@ -33,9 +33,11 @@ class TestFunctions:
     def test_compose_function(self, saltino_executor):
         """
         Test function composition
+        Program: double(increment(5)) = double(6) = 12
+        Expected: 12
         """
         program_path = Path("/workspace/programs/compose.salt")
         result, error = saltino_executor(program_path)
         
         assert error is None, f"Program execution failed: {error}"
-        assert isinstance(result, (int, float)), f"Expected numeric result, got {type(result)}"
+        assert result == 12, f"Expected 12 (double(increment(5))), got {result}"
