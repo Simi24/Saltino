@@ -94,6 +94,14 @@ class SemanticAnalyzer:
         if self.debug_mode:
             print(message)
 
+    def _get_current_function_name(self) -> Optional[str]:
+        """Get the name of the currently analyzed function, if any."""
+        return getattr(self, '_current_function_name', None)
+
+    def _set_current_function_name(self, name: Optional[str]):
+        """Set the name of the currently analyzed function."""
+        self._current_function_name = name
+
     # ==================== VISITOR METHODS ====================
 
     def visit_program(self, node: Program):
@@ -116,6 +124,10 @@ class SemanticAnalyzer:
         """Visita una definizione di funzione"""
         self._debug_print(f"\n--- Analizzando funzione: {node.name} ---")
 
+        # Set the current function name for tail call detection
+        old_function_name = self._get_current_function_name()
+        self._set_current_function_name(node.name)
+
         # Entra in un nuovo scope per la funzione
         func_scope = self.current_scope.enter(f"function_{node.name}")
         old_scope = self.current_scope
@@ -134,6 +146,8 @@ class SemanticAnalyzer:
 
         # Esce dal scope della funzione
         self.current_scope = old_scope
+        # Restore the previous function name
+        self._set_current_function_name(old_function_name)
         self._debug_print(f"--- Fine funzione: {node.name} ---")
 
     def visit_block(self, node: Block):
@@ -260,9 +274,14 @@ class SemanticAnalyzer:
         """Visita un'istruzione return"""
         self.set_node_info(node, scope=self.current_scope)
         node.value.accept(self)
-        # Tail Call Optimization annotation: if the return value is a FunctionCall, mark it
+        # Tail Call Optimization annotation: only mark recursive calls as potential tail calls
         if isinstance(node.value, FunctionCall):
-            self.set_node_info(node.value, is_potential_tail_call=True)
+            # Check if this is a recursive call by comparing function names
+            current_function_name = self._get_current_function_name()
+            if (current_function_name and 
+                isinstance(node.value.function, Identifier) and 
+                node.value.function.name == current_function_name):
+                self.set_node_info(node.value, is_potential_tail_call=True)
 
     def visit_binary_expression(self, node: BinaryExpression):
         """Visita un'espressione binaria"""
