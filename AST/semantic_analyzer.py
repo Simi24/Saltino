@@ -1,14 +1,8 @@
-from antlr4 import InputStream, CommonTokenStream
 from AST.ASTsymbol_table import SymbolTable, SymbolKind
 from AST.ASTNodes import *
-from AST.ASTVisitor import build_ast, print_ast
-from Grammatica.SaltinoLexer import SaltinoLexer
-from Grammatica.SaltinoParser import SaltinoParser
 import sys
 import os
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, field
-from enum import Enum
+from typing import Any, Dict, List, Optional
 
 # Add the workspace root to the Python path
 workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

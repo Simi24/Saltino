@@ -5,7 +5,6 @@ Core interpreter class with modular execution handlers.
 
 from AST.ASTNodes import *
 from AST.semantic_analyzer import SemanticAnalyzer
-from AST.ASTsymbol_table import SymbolKind
 from errors.runtime_errors import SaltinoRuntimeError
 from execution_frames import ExecutionFrame, FrameType
 from execution_environment import Environment
