@@ -189,3 +189,4 @@ cython_debug/
 
 /reports
 tasks.md
+.DS_Store

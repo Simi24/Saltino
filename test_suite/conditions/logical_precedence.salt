@@ -1,28 +1,45 @@
-// Test di precedenza dei connettivi logici (and ha precedenza su or)
-def main() {
-    result = 0
-    
+// Test di precedenza dei connettivi logici usando funzioni ausiliarie
+def test_precedence1() {
     // Test: true or false and false = true or (false and false) = true or false = true
     if (true or false and false) {
-        result = result + 1
+        return 1
+    } else {
+        return 0
     }
-    
+}
+
+def test_precedence2() {
     // Test: false and true or true = (false and true) or true = false or true = true
     if (false and true or true) {
-        result = result + 1
+        return 1
+    } else {
+        return 0
     }
-    
+}
+
+def test_negation() {
     // Test con negazione: !false and true = (!false) and true = true and true = true
     if (!false and true) {
-        result = result + 1
+        return 1
+    } else {
+        return 0
     }
-    
+}
+
+def test_negation_or() {
     // Test: !true or false = (!true) or false = false or false = false
     if (!true or false) {
-        result = result + 100  // Non dovrebbe essere eseguito
+        return 0  // Non dovrebbe essere eseguito
     } else {
-        result = result + 1
+        return 1
     }
+}
+
+def main() {
+    result1 = test_precedence1()  // 1
+    result2 = test_precedence2()  // 1
+    result3 = test_negation()     // 1
+    result4 = test_negation_or()  // 1
     
-    return result
+    return result1 + result2 + result3 + result4
 }

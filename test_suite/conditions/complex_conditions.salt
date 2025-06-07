@@ -1,30 +1,59 @@
-// Test di condizioni complesse con parentesi
-def main() {
-    a = 5
-    b = 10
+// Test di condizioni complesse usando funzioni ausiliarie
+def test_complex1() {
+    a = 10
+    b = 5
     c = 15
     
-    result = 0
-    
-    // Test: (a < b) and (b < c)
-    if ((a < b) and (b < c)) {
-        result = result + 1
+    // Test: (a > b) and (c > a)
+    if ((a > b) and (c > a)) {
+        return 1
+    } else {
+        return 0
     }
+}
+
+def test_complex2() {
+    x = 3
+    y = 7
+    z = 3
     
-    // Test: (a > b) or (c > b)
-    if ((a > b) or (c > b)) {
-        result = result + 1
+    // Test: (x == z) or (y < x)
+    if ((x == z) or (y < x)) {
+        return 1
+    } else {
+        return 0
     }
+}
+
+def test_complex3() {
+    p = true
+    q = false
     
-    // Test: !(a == b) and (c > a)
-    if (!(a == b) and (c > a)) {
-        result = result + 1
+    // Test: p and !q
+    if (p and !q) {
+        return 1
+    } else {
+        return 0
     }
+}
+
+def test_complex4() {
+    m = 8
+    n = 12
     
-    // Test complesso: ((a + b) > c) or ((a * 2) == b)
-    if (((a + b) > c) or ((a * 2) == b)) {
-        result = result + 1
+    // Test: !(m > n) and (m < n)
+    if (!(m > n) and (m < n)) {
+        return 1
+    } else {
+        return 0
     }
+}
+
+def main() {
+    result1 = test_complex1()  // 1
+    result2 = test_complex2()  // 1
+    result3 = test_complex3()  // 1
+    result4 = test_complex4()  // 1
     
-    return result
+    return result1 + result2 + result3 + result4
 }

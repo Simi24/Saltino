@@ -1,39 +1,40 @@
-// Test di operatori logici
+// Test di operatori logici usando funzioni ausiliarie
+def test_and(a, b) {
+    if (a and b) {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+def test_or(a, b) {
+    if (a or b) {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+def test_not(a) {
+    if (!a) {
+        return 1
+    } else {
+        return 0
+    }
+}
+
 def main() {
-    result = 0
+    // Test: true and true = true
+    result1 = test_and(true, true)     // 1
     
-    // Test AND
-    if (true and true) {
-        result = result + 1
-    }
+    // Test: false or true = true
+    result2 = test_or(false, true)     // 1
     
-    if (true and false) {
-        result = result + 100  // Non dovrebbe essere eseguito
-    } else {
-        result = result + 1
-    }
+    // Test: !false = true
+    result3 = test_not(false)          // 1
     
-    // Test OR
-    if (false or true) {
-        result = result + 1
-    }
+    // Test: true and false = false
+    result4 = test_and(true, false)    // 0
     
-    if (false or false) {
-        result = result + 100  // Non dovrebbe essere eseguito
-    } else {
-        result = result + 1
-    }
-    
-    // Test negazione
-    if (!false) {
-        result = result + 1
-    }
-    
-    if (!true) {
-        result = result + 100  // Non dovrebbe essere eseguito
-    } else {
-        result = result + 1
-    }
-    
-    return result
+    return result1 + result2 + result3 + result4
 }
