@@ -13,6 +13,22 @@ Come da email del 30 maggio:
 
 Iscritto all'appello del 23/06/2025.
 
+## Come eseguire il progetto
+Per eseguire il progetto, seguire questi passaggi:
+1. Build e open il devcontainer di VSCode.
+2. Eseguire un programma .saltino con il comando:
+   ```bash
+   python main.py <file.saltino>
+   ```
+3. Per vedere le opzioni di esecuzione, eseguire:
+   ```bash
+   python main.py --help
+   ```
+4. Per eseguire i test, utilizzare:
+   ```bash
+   python -m pytest
+   ```
+
 ## Architettura del Sistema
 
 Il sistema è organizzato in componenti modulari con responsabilità specifiche:
