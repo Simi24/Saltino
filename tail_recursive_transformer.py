@@ -110,11 +110,13 @@ class TailCallTransformer:
         Returns:
             Dictionary with pattern information if match found, None otherwise
         """
-        # 1. Parameter Check: exactly one main parameter
-        if len(function.parameters) != 1:
+        # 1. Parameter Check: exactly one or two main parameters
+        if len(function.parameters) not in [1, 2]:
             return None
 
         main_param = function.parameters[0]
+        second_param = function.parameters[1] if len(
+            function.parameters) == 2 else None
 
         # 2. Body Structure: must be primarily a conditional statement
         if len(function.body.statements) != 1:
@@ -143,7 +145,7 @@ class TailCallTransformer:
             return None
 
         base_return = if_stmt.then_block.statements[0]
-        if not isinstance(base_return.value, (IntegerLiteral, BooleanLiteral)):
+        if not isinstance(base_return.value, (IntegerLiteral, BooleanLiteral, Identifier)):
             return None
 
         initial_accumulator_value = base_return.value
@@ -179,16 +181,28 @@ class TailCallTransformer:
             return None
 
         recursive_args = recursive_call.arguments
-        if not self._validate_recursive_args(recursive_args, main_param):
+        if not self._validate_recursive_args(recursive_args, main_param, second_param):
             return None
 
-        # 8. "Other Operand" Type: must be identifier, constant, function call, or unary expression
-        if not isinstance(other_operand, (Identifier, IntegerLiteral, BooleanLiteral, FunctionCall, UnaryExpression)):
+        # 8. "Other Operand" Type: must be identifier, constant, function call, unary expression, or binary expression
+        if not isinstance(other_operand, (Identifier, IntegerLiteral, BooleanLiteral, FunctionCall, UnaryExpression, BinaryExpression)):
+            return None
+
+        # 8.5. Reject cases where "other operand" is also a recursive call to the same function
+        # This prevents incorrect transformation of functions like Fibonacci that have multiple recursive calls
+        if self._is_recursive_call(other_operand, function.name):
+            return None
+
+        # 9. Reject list construction patterns using :: operator
+        # These require different transformation strategies (continuation-passing style)
+        # to preserve semantic correctness
+        if operator == '::':
             return None
 
         # Pattern matched successfully!
         return {
             'main_param': main_param,
+            'second_param': second_param,
             'base_value': base_value,
             'initial_accumulator_value': initial_accumulator_value,
             'operator': operator,
@@ -218,36 +232,67 @@ class TailCallTransformer:
                 isinstance(expr.function, Identifier) and
                 expr.function.name == function_name)
 
-    def _validate_recursive_args(self, args: List, main_param: str) -> bool:
+    def _validate_recursive_args(self, args: List, main_param: str, second_param: str = None) -> bool:
         """Validate that recursive call arguments follow expected pattern."""
-        if len(args) != 1:
+        # For single parameter functions
+        if second_param is None:
+            if len(args) != 1:
+                return False
+
+            arg = args[0]
+
+            # Should be a modification of main parameter (e.g., param - 1, param + 1)
+            # OR a function call operating on the main parameter (e.g., tail(lst))
+            # OR a unary expression operating on the main parameter (e.g., tail lst)
+            if isinstance(arg, BinaryExpression):
+                if (isinstance(arg.left, Identifier) and arg.left.name == main_param and
+                        isinstance(arg.right, (IntegerLiteral, BooleanLiteral))):
+                    return True
+                elif (isinstance(arg.right, Identifier) and arg.right.name == main_param and
+                      isinstance(arg.left, (IntegerLiteral, BooleanLiteral))):
+                    return True
+            elif isinstance(arg, FunctionCall):
+                # Check if it's a function call with the main parameter as argument
+                if (len(arg.arguments) == 1 and
+                    isinstance(arg.arguments[0], Identifier) and
+                        arg.arguments[0].name == main_param):
+                    return True
+            elif isinstance(arg, UnaryExpression):
+                # Check if it's a unary expression with the main parameter as operand
+                if (isinstance(arg.operand, Identifier) and
+                        arg.operand.name == main_param):
+                    return True
             return False
 
-        arg = args[0]
+        # For two parameter functions
+        else:
+            if len(args) != 2:
+                return False
 
-        # Should be a modification of main parameter (e.g., param - 1, param + 1)
-        # OR a function call operating on the main parameter (e.g., tail(lst))
-        # OR a unary expression operating on the main parameter (e.g., tail lst)
-        if isinstance(arg, BinaryExpression):
-            if (isinstance(arg.left, Identifier) and arg.left.name == main_param and
-                    isinstance(arg.right, (IntegerLiteral, BooleanLiteral))):
-                return True
-            elif (isinstance(arg.right, Identifier) and arg.right.name == main_param and
-                  isinstance(arg.left, (IntegerLiteral, BooleanLiteral))):
-                return True
-        elif isinstance(arg, FunctionCall):
-            # Check if it's a function call with the main parameter as argument
-            if (len(arg.arguments) == 1 and 
-                isinstance(arg.arguments[0], Identifier) and 
-                arg.arguments[0].name == main_param):
-                return True
-        elif isinstance(arg, UnaryExpression):
-            # Check if it's a unary expression with the main parameter as operand
-            if (isinstance(arg.operand, Identifier) and 
-                arg.operand.name == main_param):
-                return True
+            arg1, arg2 = args[0], args[1]
 
-        return False
+            # Arguments can be modifications of parameters OR the parameter itself (passed through)
+            def validates_param_usage(arg, param_name):
+                # Direct parameter usage (e.g., ys in append(tail(xs), ys))
+                if isinstance(arg, Identifier) and arg.name == param_name:
+                    return True
+                # Parameter modification (e.g., tail(xs), n-1, etc.)
+                if isinstance(arg, BinaryExpression):
+                    return ((isinstance(arg.left, Identifier) and arg.left.name == param_name and
+                            isinstance(arg.right, (IntegerLiteral, BooleanLiteral))) or
+                            (isinstance(arg.right, Identifier) and arg.right.name == param_name and
+                            isinstance(arg.left, (IntegerLiteral, BooleanLiteral))))
+                elif isinstance(arg, FunctionCall):
+                    return (len(arg.arguments) == 1 and
+                            isinstance(arg.arguments[0], Identifier) and
+                            arg.arguments[0].name == param_name)
+                elif isinstance(arg, UnaryExpression):
+                    return (isinstance(arg.operand, Identifier) and
+                            arg.operand.name == param_name)
+                return False
+
+            return (validates_param_usage(arg1, main_param) and
+                    validates_param_usage(arg2, second_param))
 
     def _rewrite_function(self, original_function: Function, pattern_info: Dict[str, Any]) -> Function:
         """
@@ -275,9 +320,13 @@ class TailCallTransformer:
                                 helper_name: str, acc_name: str) -> Function:
         """Create the tail-recursive helper function with accumulator."""
         main_param = pattern_info['main_param']
+        second_param = pattern_info['second_param']
 
-        # Helper parameters: original parameter + accumulator
-        helper_params = [main_param, acc_name]
+        # Helper parameters: original parameters + accumulator
+        if second_param is None:
+            helper_params = [main_param, acc_name]
+        else:
+            helper_params = [main_param, second_param, acc_name]
 
         # Base case condition (same as original)
         base_condition = copy.deepcopy(pattern_info['condition'])
@@ -293,12 +342,21 @@ class TailCallTransformer:
             right=copy.deepcopy(pattern_info['other_operand'])
         )
 
-        # Arguments for tail call: modified parameter + new accumulator
-        tail_call_args = [
-            # modified main param
-            copy.deepcopy(pattern_info['recursive_args'][0]),
-            new_acc_expr  # new accumulator value
-        ]
+        # Arguments for tail call
+        if second_param is None:
+            tail_call_args = [
+                # modified main param
+                copy.deepcopy(pattern_info['recursive_args'][0]),
+                new_acc_expr  # new accumulator value
+            ]
+        else:
+            tail_call_args = [
+                # modified main param
+                copy.deepcopy(pattern_info['recursive_args'][0]),
+                # modified second param
+                copy.deepcopy(pattern_info['recursive_args'][1]),
+                new_acc_expr  # new accumulator value
+            ]
 
         tail_call = FunctionCall(
             function=Identifier(helper_name),
@@ -328,14 +386,28 @@ class TailCallTransformer:
                                  helper_name: str, acc_name: str) -> Function:
         """Create the wrapper function that maintains original signature."""
         # Call helper with original parameters + initial accumulator value
-        wrapper_call = FunctionCall(
-            function=Identifier(helper_name),
-            arguments=[
+        main_param = pattern_info['main_param']
+        second_param = pattern_info['second_param']
+
+        if second_param is None:
+            wrapper_args = [
                 # pass through original param
-                Identifier(pattern_info['main_param']),
+                Identifier(main_param),
                 # initial acc value
                 copy.deepcopy(pattern_info['initial_accumulator_value'])
             ]
+        else:
+            wrapper_args = [
+                # pass through original params
+                Identifier(main_param),
+                Identifier(second_param),
+                # initial acc value
+                copy.deepcopy(pattern_info['initial_accumulator_value'])
+            ]
+
+        wrapper_call = FunctionCall(
+            function=Identifier(helper_name),
+            arguments=wrapper_args
         )
 
         wrapper_return = ReturnStatement(wrapper_call)
@@ -426,8 +498,8 @@ def analyze_function_pattern(function: Function) -> Dict[str, Any]:
 
     if pattern_info is None:
         # Provide detailed analysis of why it can't be transformed
-        if len(function.parameters) != 1:
-            result['reason'] = f"Function has {len(function.parameters)} parameters, expected 1"
+        if len(function.parameters) not in [1, 2]:
+            result['reason'] = f"Function has {len(function.parameters)} parameters, expected 1 or 2"
         elif len(function.body.statements) != 1:
             result['reason'] = f"Function body has {len(function.body.statements)} statements, expected 1"
         else:

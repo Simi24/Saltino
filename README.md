@@ -49,6 +49,25 @@ Il sistema è organizzato in componenti modulari con responsabilità specifiche:
 - Supporta scope nidificati con catena di parent environments
 - Integrazione con il semantic analyzer per risoluzione dei nomi
 
+## Documentazione del Tail Call Transformer
+
+Il sistema include un sofisticato trasformatore per l'ottimizzazione della ricorsione di coda:
+
+### Documentazione Completa
+- **[`tail_recursive_transformer.md`](tail_recursive_transformer.md)**: Documentazione dettagliata in italiano del modulo di trasformazione
+
+### Caratteristiche Principali
+- **Pattern Recognition**: Riconosce automaticamente pattern ricorsivi trasformabili
+- **Sicurezza**: Rifiuta pattern che potrebbero alterare la semantica (es. costruzione liste con `::`)
+- **Preservazione Interfaccia**: Mantiene la signature originale delle funzioni
+- **Test Completi**: Suite di 24 test per validare tutti i pattern supportati
+
+### Pattern Supportati
+- Fattoriale: `n * factorial(n-1)`
+- Somma numerica: `n + sum(n-1)`
+- Operazioni su liste: `1 + length(tail(lst))`
+- Dot product: `head(xs)*head(ys) + dot_product(tail(xs), tail(ys))`
+
 ### Flusso di Esecuzione
 
 **Fase 1: Parsing e Analisi**
