@@ -279,6 +279,87 @@ class TestHelpers:
         ])
         return Function("dot_product", ["xs", "ys"], dot_product_body)
 
+    @staticmethod
+    def create_reverse_list() -> Function:
+        """Create AST for a function that reverses a list using head/tail."""
+        # reverse(xs) = if (xs == []) then [] else reverse(tail(xs)) :: [head(xs)]
+        return Function(
+            name="reverse",
+            parameters=["xs"],
+            body=Block([
+                ReturnStatement(
+                    IfStatement(
+                        condition=ComparisonCondition(
+                            left=Identifier("xs"),
+                            operator="==",
+                            right=EmptyList()
+                        ),
+                        then_block=Block([
+                            ReturnStatement(EmptyList())
+                        ]),
+                        else_block=Block([
+                            ReturnStatement(
+                                BinaryExpression(
+                                    left=FunctionCall(
+                                        function=Identifier("reverse"),
+                                        arguments=[
+                                            FunctionCall(
+                                                function=Identifier("tail"),
+                                                arguments=[Identifier("xs")]
+                                            )
+                                        ]
+                                    ),
+                                    operator="::",
+                                    right=FunctionCall(
+                                        function=Identifier("head"),
+                                        arguments=[Identifier("xs")]
+                                    )
+                                )
+                            )
+                        ])
+                    )
+                )
+            ])
+        )
+
+    @staticmethod
+    def create_flexible_param_function() -> Function:
+        """Create AST for a function that uses parameters in flexible order."""
+        # flex_func(x, y) = if (x == 0) then 0 else flex_func(y, x-1)
+        return Function(
+            name="flex_func",
+            parameters=["x", "y"],
+            body=Block([
+                ReturnStatement(
+                    IfStatement(
+                        condition=ComparisonCondition(
+                            left=Identifier("x"),
+                            operator="==",
+                            right=IntegerLiteral(0)
+                        ),
+                        then_block=Block([
+                            ReturnStatement(IntegerLiteral(0))
+                        ]),
+                        else_block=Block([
+                            ReturnStatement(
+                                FunctionCall(
+                                    function=Identifier("flex_func"),
+                                    arguments=[
+                                        Identifier("y"),
+                                        BinaryExpression(
+                                            left=Identifier("x"),
+                                            operator="-",
+                                            right=IntegerLiteral(1)
+                                        )
+                                    ]
+                                )
+                            )
+                        ])
+                    )
+                )
+            ])
+        )
+
 
 class TestTailCallTransformer:
     """Test cases for the TailCallTransformer class."""
@@ -717,6 +798,45 @@ class TestTailCallTransformer:
         assert helper_func.parameters[0] == "xs", "First parameter should be first original parameter"
         assert helper_func.parameters[1] == "ys", "Second parameter should be second original parameter"
         assert "acc" in helper_func.parameters[2], "Third parameter should be accumulator"
+
+    def test_reverse_list_transformation(self):
+        """Test that list reversal function with :: is not transformed."""
+        reverse_func = TestHelpers.create_reverse_list()
+        program = Program([reverse_func])
+
+        transformed_program = self.transformer.transform_program(program)
+
+        # Function with :: operator should not be transformed
+        assert len(transformed_program.functions) == 1, "Function with :: operator should not be transformed"
+        assert transformed_program.functions[0].name == "reverse", "Original function should be preserved unchanged"
+        assert transformed_program.functions[0] == reverse_func, "Function should be completely unchanged"
+
+    def test_flex_func_transformation(self):
+        """Test complete transformation of flex_func function."""
+        flex_func = TestHelpers.create_flexible_param_function()
+        program = Program([flex_func])
+
+        transformed_program = self.transformer.transform_program(program)
+
+        # Should have original flex_func (now wrapper) + helper function
+        assert len(transformed_program.functions) == 2, f"Expected 2 functions, got {len(transformed_program.functions)}"
+
+        # Find wrapper and helper functions
+        wrapper_func = None
+        helper_func = None
+
+        for func in transformed_program.functions:
+            if func.name == "flex_func":
+                wrapper_func = func
+            elif "tc_helper" in func.name:
+                helper_func = func
+
+        assert wrapper_func is not None, "Should have wrapper function"
+        assert helper_func is not None, "Should have helper function"
+
+        # Check parameters
+        assert wrapper_func.parameters == ["x", "y"], "Wrapper should maintain two parameters"
+        assert len(helper_func.parameters) == 3, "Helper should have three parameters (x, y, acc)"
 
 
 if __name__ == "__main__":

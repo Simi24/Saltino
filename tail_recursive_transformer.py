@@ -11,7 +11,6 @@ a "wrapper" function that maintains the original function's signature.
 from AST.ASTNodes import *
 from typing import Dict, List, Optional, Any
 import copy
-import copy
 
 
 class TailCallTransformer:
@@ -95,21 +94,8 @@ class TailCallTransformer:
         return self._rewrite_function(function, pattern_info)
 
     def _match_pattern(self, function: Function) -> Optional[Dict[str, Any]]:
-        """
-        Check if function matches the target recursive pattern.
+        """Check if function matches any of the supported recursive patterns."""
 
-        Expected pattern:
-        function_name(param) {
-            if (param == base_value) {
-                return initial_value;
-            } else {
-                return param operator function_name(param_modification);
-            }
-        }
-
-        Returns:
-            Dictionary with pattern information if match found, None otherwise
-        """
         # 1. Parameter Check: exactly one or two main parameters
         if len(function.parameters) not in [1, 2]:
             return None
@@ -150,33 +136,64 @@ class TailCallTransformer:
 
         initial_accumulator_value = base_return.value
 
-        # 5. Recursive Case - Return Structure: must be binary operation
+        # 5. Recursive Case - Return Structure: must be either:
+        # - A binary operation (e.g., n * factorial(n-1))
+        # - A direct recursive call (e.g., flex_func(y, x-1))
         if (if_stmt.else_block is None or
             len(if_stmt.else_block.statements) != 1 or
                 not isinstance(if_stmt.else_block.statements[0], ReturnStatement)):
             return None
 
         recursive_return = if_stmt.else_block.statements[0]
-        if not isinstance(recursive_return.value, BinaryExpression):
-            return None
+        recursive_value = recursive_return.value
 
-        binary_expr = recursive_return.value
-        operator = binary_expr.operator
-
-        # 6. Recursive Call Identification: one operand must be recursive call
+        is_recursive_call_on_left = None
         recursive_call = None
         other_operand = None
+        operator = None
 
-        if self._is_recursive_call(binary_expr.left, function.name):
-            recursive_call = binary_expr.left
-            other_operand = binary_expr.right
-        elif self._is_recursive_call(binary_expr.right, function.name):
-            recursive_call = binary_expr.right
-            other_operand = binary_expr.left
+        if isinstance(recursive_value, BinaryExpression):
+            # Case 1: Binary expression (e.g., n * factorial(n-1))
+            binary_expr = recursive_value
+            operator = binary_expr.operator
+
+            if operator == "::":
+                return None
+
+            if self._is_recursive_call(binary_expr.left, function.name):
+                recursive_call = binary_expr.left
+                other_operand = binary_expr.right
+                is_recursive_call_on_left = True
+            elif self._is_recursive_call(binary_expr.right, function.name):
+                recursive_call = binary_expr.right
+                other_operand = binary_expr.left
+                is_recursive_call_on_left = False
+            else:
+                return None
+
+            # Validate other operand
+            if not isinstance(other_operand, (Identifier, IntegerLiteral, BooleanLiteral, FunctionCall, UnaryExpression, BinaryExpression)):
+                return None
+
+            if self._is_recursive_call(other_operand, function.name):
+                return None
+
+            # Check for non-commutative operators that would require complex transformation
+            # subtraction, division, cons, exponentiation
+            non_commutative_ops = ["-", "/", "::", "^"]
+            if operator in non_commutative_ops and not is_recursive_call_on_left:
+                return None
+
+        elif isinstance(recursive_value, FunctionCall) and self._is_recursive_call(recursive_value, function.name):
+            # Case 2: Direct recursive call (e.g., flex_func(y, x-1))
+            recursive_call = recursive_value
+            other_operand = None
+            operator = None
+            is_recursive_call_on_left = True  # Doesn't matter for direct calls
         else:
             return None
 
-        # 7. Recursive Call Arguments: must follow expected pattern
+        # Validate recursive call arguments
         if not isinstance(recursive_call, FunctionCall):
             return None
 
@@ -184,22 +201,6 @@ class TailCallTransformer:
         if not self._validate_recursive_args(recursive_args, main_param, second_param):
             return None
 
-        # 8. "Other Operand" Type: must be identifier, constant, function call, unary expression, or binary expression
-        if not isinstance(other_operand, (Identifier, IntegerLiteral, BooleanLiteral, FunctionCall, UnaryExpression, BinaryExpression)):
-            return None
-
-        # 8.5. Reject cases where "other operand" is also a recursive call to the same function
-        # This prevents incorrect transformation of functions like Fibonacci that have multiple recursive calls
-        if self._is_recursive_call(other_operand, function.name):
-            return None
-
-        # 9. Reject list construction patterns using :: operator
-        # These require different transformation strategies (continuation-passing style)
-        # to preserve semantic correctness
-        if operator == '::':
-            return None
-
-        # Pattern matched successfully!
         return {
             'main_param': main_param,
             'second_param': second_param,
@@ -208,7 +209,8 @@ class TailCallTransformer:
             'operator': operator,
             'other_operand': other_operand,
             'recursive_args': recursive_args,
-            'condition': condition
+            'condition': condition,
+            'is_recursive_call_on_left': is_recursive_call_on_left
         }
 
     def _extract_base_value(self, condition, main_param: str):
@@ -269,9 +271,6 @@ class TailCallTransformer:
             if len(args) != 2:
                 return False
 
-            arg1, arg2 = args[0], args[1]
-
-            # Arguments can be modifications of parameters OR the parameter itself (passed through)
             def validates_param_usage(arg, param_name):
                 # Direct parameter usage (e.g., ys in append(tail(xs), ys))
                 if isinstance(arg, Identifier) and arg.name == param_name:
@@ -291,8 +290,20 @@ class TailCallTransformer:
                             arg.operand.name == param_name)
                 return False
 
-            return (validates_param_usage(arg1, main_param) and
-                    validates_param_usage(arg2, second_param))
+            # Check that each argument corresponds to a valid usage of either parameter
+            # but allow them in any order
+            arg1_valid = validates_param_usage(
+                args[0], main_param) or validates_param_usage(args[0], second_param)
+            arg2_valid = validates_param_usage(
+                args[1], main_param) or validates_param_usage(args[1], second_param)
+
+            # Make sure both parameters are used exactly once
+            uses_main_param = (validates_param_usage(args[0], main_param) or
+                               validates_param_usage(args[1], main_param))
+            uses_second_param = (validates_param_usage(args[0], second_param) or
+                                 validates_param_usage(args[1], second_param))
+
+            return arg1_valid and arg2_valid and uses_main_param and uses_second_param
 
     def _rewrite_function(self, original_function: Function, pattern_info: Dict[str, Any]) -> Function:
         """
@@ -335,12 +346,35 @@ class TailCallTransformer:
         base_return = ReturnStatement(Identifier(acc_name))
         base_block = Block([base_return])
 
-        # Recursive step: compute new accumulator and make tail call
-        new_acc_expr = BinaryExpression(
-            left=Identifier(acc_name),
-            operator=pattern_info['operator'],
-            right=copy.deepcopy(pattern_info['other_operand'])
-        )
+        # Recursive step: depends on whether we have a binary operation or direct call
+        operator = pattern_info['operator']
+        if operator is not None:
+            # Binary operation case (e.g., n * factorial(n-1))
+            # Compute new accumulator value
+            new_acc_left = copy.deepcopy(pattern_info['other_operand'])
+            new_acc_right = Identifier(acc_name)
+
+            if pattern_info['is_recursive_call_on_left']:
+                # Original: recursive_call OP other_operand
+                # New: other_operand OP acc
+                left_operand = new_acc_left
+                right_operand = new_acc_right
+            else:
+                # Original: other_operand OP recursive_call
+                # For non-commutative ops like subtraction, we need: other_operand OP acc
+                left_operand = new_acc_left
+                right_operand = new_acc_right
+
+            new_acc_expr = BinaryExpression(
+                left=left_operand,
+                # Explicitly use pattern_info['operator'] as per user's fix
+                operator=pattern_info['operator'],
+                right=right_operand
+            )
+        else:
+            # Direct recursive call case (e.g., flex_func(y, x-1))
+            # Just pass through the accumulator unchanged
+            new_acc_expr = Identifier(acc_name)
 
         # Arguments for tail call
         if second_param is None:

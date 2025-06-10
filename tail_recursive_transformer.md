@@ -209,6 +209,7 @@ append(xs, ys) {
 ### 2. Operatori Esclusi
 - **Operatore `::`**: Richiede continuation-passing style
 - Pattern complessi che modificano strutture dati in modo non-cumulativo
+- Tutti gli operatori non commutativi o non associativi
 
 ### 3. Analisi Statica
 - Nessuna analisi del flusso di controllo avanzata
@@ -291,58 +292,6 @@ Tutti i 24 test nella suite passano con successo, coprendo:
 - 6 test di trasformazione AST
 - 4 test di rejezione pattern non validi
 - 7 test di analisi diagnostica
-
-### Pattern di Test Specifici
-
-#### Pattern Trasformabili Testati
-- **Fattoriale**: `factorial(n) = n * factorial(n-1)`
-- **Somma**: `sum(n) = n + sum(n-1)`
-- **Lunghezza**: `length(lst) = 1 + length(tail(lst))`
-- **Somma lista**: `sum_list(lst, acc) = sum_list(tail(lst), acc + head(lst))`
-- **Prodotto lista**: `product_list(lst, acc) = product_list(tail(lst), acc * head(lst))`
-- **Dot product**: `dot_product(xs, ys) = head(xs) * head(ys) + dot_product(tail(xs), tail(ys))`
-
-#### Pattern Correttamente Respinti
-- **Costruzione lista**: Pattern con operatore `::` (cons)
-- **Funzioni non ricorsive**: Funzioni senza chiamate ricorsive
-- **Strutture complesse**: Funzioni con multiple chiamate ricorsive
-
-## Stato Corrente del Progetto
-
-### Versione Stabile
-- **Core functionality**: Completa e testata
-- **Pattern recognition**: Robusto per pattern supportati
-- **Error handling**: Comprehensive rejection of unsafe patterns
-- **Documentation**: Completa in italiano
-
-### Recenti Miglioramenti
-- **Validazione operatore `::`**: Esplicita rejezione di pattern list-construction
-- **Pattern a due parametri**: Supporto completo per dot product e funzioni simili
-- **Diagnostica migliorata**: Analisi dettagliata delle ragioni di esclusione
-- **Test coverage**: Suite completa con 24 test
-
-### Garanzie di Correttezza
-1. **Solo pattern sicuri**: Nessuna trasformazione che alteri la semantica
-2. **Preservazione interfaccia**: Signature delle funzioni invariate
-3. **Backward compatibility**: Codice esistente non modificato
-4. **Zero false positives**: Rejezione rigorosa di pattern ambigui
-
-## Sviluppi Futuri
-
-### 1. Estensioni Pattern
-- **Continuation-passing style**: Per funzioni di costruzione lista
-- **Mutual recursion**: Trasformazione di ricorsione mutua
-- **Multiple recursive calls**: Tecniche più avanzate
-
-### 2. Ottimizzazioni Avanzate
-- **Analisi del flusso**: Identificazione automatica di più pattern
-- **Inline expansion**: Eliminazione delle funzioni wrapper quando possibile
-- **Loop conversion**: Conversione diretta in cicli imperativi
-
-### 3. Diagnostica Migliorata
-- **Suggerimenti di refactoring**: Come rendere trasformabile una funzione
-- **Analisi delle prestazioni**: Stima del beneficio della trasformazione
-- **Debugging support**: Strumenti per il debug delle funzioni trasformate
 
 ## Conclusioni
 
