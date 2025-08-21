@@ -1,0 +1,20 @@
+// Test di mutual tail recursion (ping-pong)
+def main() {
+    return is_even_tail(10)
+}
+
+def is_even_tail(n) {
+    if (n == 0) {
+        return true
+    } else {
+        return is_odd_tail(n - 1)
+    }
+}
+
+def is_odd_tail(n) {
+    if (n == 0) {
+        return false
+    } else {
+        return is_even_tail(n - 1)
+    }
+}

@@ -1,0 +1,28 @@
+// Test di tail calls multiple in branches differenti
+def main() {
+    return complex_tail_function(15, 3)
+}
+
+def complex_tail_function(a, b) {
+    if (a > 10) {
+        return tail_helper_1(a, b)
+    } else {
+        return tail_helper_2(a, b)
+    }
+}
+
+def tail_helper_1(x, y) {
+    if (x <= 0) {
+        return y
+    } else {
+        return tail_helper_1(x - 2, y + 1)
+    }
+}
+
+def tail_helper_2(x, y) {
+    if (x <= 0) {
+        return y * 2
+    } else {
+        return tail_helper_2(x - 1, y + 2)
+    }
+}

@@ -45,25 +45,37 @@ class Environment:
         """
         # Importiamo i tipi localmente per evitare problemi circolari
         from AST.ASTNodes import Identifier, Assignment
-        
+
         if isinstance(node, Identifier):
             # Per gli identificatori, cerca nella symbol table
             scope = semantic_analyzer.get_node_info(node, 'scope')
             if scope:
                 try:
                     symbol_info = scope.lookup(node.name)
+                    # Check if it's marked as uninitialized
+                    is_uninitialized = semantic_analyzer.get_node_info(
+                        symbol_info, 'uninitialized', False)
+                    if is_uninitialized:
+                        raise SaltinoRuntimeError(
+                            f"UnboundLocalError: cannot access local variable '{node.name}' "
+                            f"where it is not associated with a value. "
+                            f"(Variable '{node.name}' is assigned in this scope, making it local, "
+                            f"but it's used before assignment)")
                     return symbol_info.unique_name
                 except ValueError:
-                    raise SaltinoRuntimeError(f"Undefined variable: {node.name}")
+                    raise SaltinoRuntimeError(
+                        f"Undefined variable: {node.name}")
             else:
-                raise SaltinoRuntimeError(f"No scope information for identifier: {node.name}")
+                raise SaltinoRuntimeError(
+                    f"No scope information for identifier: {node.name}")
         elif isinstance(node, Assignment):
             # Per gli assegnamenti, cerca le informazioni della variabile
             var_info = semantic_analyzer.get_node_info(node, 'variable_info')
             if var_info:
                 return var_info.unique_name
             else:
-                raise SaltinoRuntimeError(f"No variable info for assignment: {node.variable_name}")
+                raise SaltinoRuntimeError(
+                    f"No variable info for assignment: {node.variable_name}")
         else:
             raise SaltinoRuntimeError(
                 f"Cannot get unique name for node type: {type(node)}")

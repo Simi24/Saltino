@@ -16,7 +16,7 @@ from errors.parser_errors import SaltinoParseError
 from typing import Optional, Tuple, List, Dict, Any
 
 
-def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optional[Program], List[Dict[str, Any]], Optional[Any]]:
+def parse_saltino(input_text: str, raise_on_error: bool = True, debug_mode = False) -> Tuple[Optional[Program], List[Dict[str, Any]], Optional[Any]]:
     """
     Analizza il codice sorgente Saltino e genera l'AST.
 
@@ -61,9 +61,10 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
         # Controlla se ci sono stati errori di parsing
         if all_errors:
             if raise_on_error:
-                error_msg = "\n".join([f"Riga {err['line']}, colonna {err['column']}: {err['message']}" 
-                                     for err in all_errors])
-                raise SaltinoParseError(f"Parsing failed with errors:\n{error_msg}")
+                error_msg = "\n".join([f"Riga {err['line']}, colonna {err['column']}: {err['message']}"
+                                       for err in all_errors])
+                raise SaltinoParseError(
+                    f"Parsing failed with errors:\n{error_msg}")
             else:
                 return None, all_errors, None
 
@@ -72,9 +73,12 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
 
         # Esegui l'analisi semantica
         from AST.semantic_analyzer import SemanticAnalyzer
-        semantic_analyzer = SemanticAnalyzer(debug_mode=False)
+        from tail_recursive_transformer import TailCallTransformer
+        semantic_analyzer = SemanticAnalyzer(debug_mode=debug_mode)
+        tail_recursive_transformer = TailCallTransformer()
 
         try:
+            ast = tail_recursive_transformer.transform_program(ast)
             semantic_analyzer.analyze(ast)
             # Se l'analisi semantica ha successo, non ci sono errori aggiuntivi
             return ast, all_errors, semantic_analyzer
@@ -87,7 +91,7 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
                 'type': 'semantic'
             }
             all_errors.append(semantic_err)
-            
+
             if raise_on_error:
                 raise semantic_error
             else:
@@ -107,10 +111,11 @@ def parse_saltino(input_text: str, raise_on_error: bool = True) -> Tuple[Optiona
                     'type': 'parsing'
                 }
                 return None, [generic_error], None
-        
+
         # Per altre eccezioni, crea un errore generico
         if raise_on_error:
-            raise SaltinoParseError(f"Unexpected error during parsing: {str(e)}")
+            raise SaltinoParseError(
+                f"Unexpected error during parsing: {str(e)}")
         else:
             generic_error = {
                 'line': 0,
@@ -139,7 +144,8 @@ def parse_saltino_interactive(input_text: str) -> Optional[Program]:
             print("❌ Errori durante il parsing:")
             for error in errors:
                 error_type = error.get('type', 'unknown')
-                print(f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
+                print(
+                    f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
             return None
 
         print("✅ Parsing completato con successo!")

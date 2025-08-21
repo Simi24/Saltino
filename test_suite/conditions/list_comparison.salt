@@ -1,29 +1,39 @@
-// Test di confronto tra liste (solo == con [])
-def main() {
+// Test di confronto tra liste usando funzioni ausiliarie
+def test_empty_equals() {
     empty1 = []
     empty2 = []
+    
+    if (empty1 == empty2) {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+def test_non_empty_vs_empty() {
     non_empty = 1 :: []
     
-    result = 0
-    
-    // Test: [] == []
-    if (empty1 == empty2) {
-        result = result + 1
-    }
-    
-    // Test: lista non vuota == []
     if (non_empty == []) {
-        result = result + 100  // Non dovrebbe essere eseguito
+        return 0  // Non dovrebbe essere eseguito
     } else {
-        result = result + 1
+        return 1
     }
+}
+
+def test_empty_vs_non_empty() {
+    non_empty = 1 :: []
     
-    // Test: [] == lista non vuota
     if ([] == non_empty) {
-        result = result + 100  // Non dovrebbe essere eseguito
+        return 0  // Non dovrebbe essere eseguito
     } else {
-        result = result + 1
+        return 1
     }
+}
+
+def main() {
+    result1 = test_empty_equals()      // 1
+    result2 = test_non_empty_vs_empty() // 1
+    result3 = test_empty_vs_non_empty() // 1
     
-    return result
+    return result1 + result2 + result3
 }

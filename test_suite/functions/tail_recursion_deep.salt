@@ -1,0 +1,12 @@
+// Test di deep tail recursion - questo test dovrebbe funzionare solo con TCO
+def main() {
+    return deep_recursion_tail(1000, 0)
+}
+
+def deep_recursion_tail(n, acc) {
+    if (n <= 0) {
+        return acc
+    } else {
+        return deep_recursion_tail(n - 1, acc + 1)
+    }
+}

@@ -1,6 +1,6 @@
 """
-User I/O handling module for the Saltino interpreter.
-Contains functions for direct user interaction (input/output).
+I/O Handler for the Saltino interpreter.
+Contains all functions related to direct user interaction (input/output).
 """
 
 import sys

@@ -1,0 +1,13 @@
+// Test di reverse con tail recursion (simulato con numeri)
+def main() {
+    // Simula reverse di [1,2,3,4,5] -> calcola 54321
+    return reverse_number_tail(12345, 0)
+}
+
+def reverse_number_tail(num, acc) {
+    if (num == 0) {
+        return acc
+    } else {
+        return reverse_number_tail(num / 10, acc * 10 + num % 10)
+    }
+}

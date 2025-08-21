@@ -1,0 +1,22 @@
+// Test di confronto: tail vs non-tail recursion
+def main() {
+    tail_result = factorial_tail_optimized(5, 1)
+    non_tail_result = factorial_non_tail(5)
+    return tail_result + non_tail_result
+}
+
+def factorial_tail_optimized(n, acc) {
+    if (n <= 1) {
+        return acc
+    } else {
+        return factorial_tail_optimized(n - 1, n * acc)
+    }
+}
+
+def factorial_non_tail(n) {
+    if (n <= 1) {
+        return 1
+    } else {
+        return n * factorial_non_tail(n - 1)
+    }
+}

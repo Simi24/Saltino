@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
 Main entry point for the Saltino interpreter.
-Handles command line argument parsing and program execution.
+Handles command-line argument parsing and program execution.
 """
 
 import sys
+from typing import Any
 from interpreter import IterativeSaltinoInterpreter
 from saltino_parser import parse_saltino
 from errors.parser_errors import SaltinoParseError, SaltinoError
 from errors.runtime_errors import SaltinoRuntimeError
-from typing import Any
 
 
 def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
@@ -19,15 +19,17 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
             program_text = file.read()
 
         ast, errors, semantic_analyzer = parse_saltino(
-            program_text, raise_on_error=False)
+            program_text, raise_on_error=False, debug_mode=debug_mode)
 
         # Controlla se ci sono stati errori di parsing
         if errors:
             print("❌ Errori durante il parsing:")
             for error in errors:
                 error_type = error.get('type', 'unknown')
-                print(f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
-            raise SaltinoRuntimeError("Errori di parsing impediscono l'esecuzione")
+                print(
+                    f"  - Riga {error['line']}, colonna {error['column']} ({error_type}): {error['message']}")
+            raise SaltinoRuntimeError(
+                "Errori di parsing impediscono l'esecuzione")
 
         if ast is None:
             raise SaltinoRuntimeError("Errore nella costruzione dell'AST")
@@ -36,6 +38,9 @@ def exec_saltino_iterative(filename: str, debug_mode: bool = False) -> Any:
         interpreter = IterativeSaltinoInterpreter(debug_mode=debug_mode)
         interpreter.semantic_analyzer = semantic_analyzer  # Passa il semantic analyzer
         result = interpreter.execute_program(ast)
+
+        # Stampa le statistiche di esecuzione
+        interpreter.print_execution_stats()
 
         return result
 
@@ -76,7 +81,7 @@ if __name__ == "__main__":
         print(f"Parse/Semantic Error: {e}")
         sys.exit(1)
     except SaltinoRuntimeError as e:
-        print(f"{e}")  # Il messaggio contiene già "Runtime Error:"
+        print(f"{e}")
         sys.exit(1)
     except KeyboardInterrupt:
         print("\nExecution interrupted by user.")

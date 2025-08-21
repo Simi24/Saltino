@@ -1,0 +1,13 @@
+// Test di list length con tail recursion
+def main() {
+    // Simula una lista di 5 elementi usando chiamate annidate
+    return list_length_tail(5, 0)
+}
+
+def list_length_tail(remaining, acc) {
+    if (remaining <= 0) {
+        return acc
+    } else {
+        return list_length_tail(remaining - 1, acc + 1)
+    }
+}

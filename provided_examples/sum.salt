@@ -1,0 +1,12 @@
+def sum_aux(n, acc) {
+  if (n == 0) {
+    return acc
+  } else {
+    return sum_aux(n-1, acc+n)
+  }
+}
+
+def main() {
+  x = 1
+  return sum_aux(x, 0)
+}

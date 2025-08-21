@@ -13,10 +13,6 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-# TODO: Add type checking for the visitor methods
-# TODO: Add error handling
-# TODO: Add scope management for variables and functions
-
 class SaltinoASTVisitor(SaltinoVisitor):
     """
     Visitor che trasforma il parse tree di ANTLR in un AST.
@@ -237,24 +233,26 @@ class SaltinoASTVisitor(SaltinoVisitor):
         """Visita operatore logico OR (precedenza più bassa)."""
         # condOr: condAnd ('or' condAnd)*
         result = self.visit(ctx.condAnd(0))  # Primo operando
-        
+
         # Se ci sono più operandi, costruisci una catena di OR associativi a sinistra
         for i in range(1, len(ctx.condAnd())):
             right = self.visit(ctx.condAnd(i))
-            result = BinaryCondition(result, 'or', right, self._get_position(ctx))
-        
+            result = BinaryCondition(
+                result, 'or', right, self._get_position(ctx))
+
         return result
 
     def visitCondAnd(self, ctx: SaltinoParser.CondAndContext):
         """Visita operatore logico AND."""
         # condAnd: condNot ('and' condNot)*
         result = self.visit(ctx.condNot(0))  # Primo operando
-        
+
         # Se ci sono più operandi, costruisci una catena di AND associativi a sinistra
         for i in range(1, len(ctx.condNot())):
             right = self.visit(ctx.condNot(i))
-            result = BinaryCondition(result, 'and', right, self._get_position(ctx))
-        
+            result = BinaryCondition(
+                result, 'and', right, self._get_position(ctx))
+
         return result
 
     def visitCondNot(self, ctx: SaltinoParser.CondNotContext):
@@ -271,37 +269,38 @@ class SaltinoASTVisitor(SaltinoVisitor):
     def visitCondAtom(self, ctx: SaltinoParser.CondAtomContext):
         """Visita condizioni atomiche (precedenza più alta)."""
         # condAtom: espressione relop espressione | espressione | 'true' | 'false' | ID | '(' condizione ')'
-        
+
         if ctx.relop():
             # È un confronto: espressione relop espressione
             left = self.visit(ctx.espressione(0))
             right = self.visit(ctx.espressione(1))
             op_text = self.visit(ctx.relop())
             return ComparisonCondition(left, op_text, right, self._get_position(ctx))
-        
+
         elif len(ctx.espressione()) == 1:
             # È una singola espressione usata come condizione (include chiamate di funzione)
             expr = self.visit(ctx.espressione(0))
             # Restituiamo l'espressione direttamente - la verifica del tipo sarà fatta nell'interprete
             return expr
-        
+
         elif ctx.getText() == 'true':
             return BooleanLiteral(True, self._get_position(ctx))
-        
+
         elif ctx.getText() == 'false':
             return BooleanLiteral(False, self._get_position(ctx))
-        
+
         elif ctx.ID():
             # Variabile booleana
             name = ctx.ID().getText()
             return Identifier(name, self._get_position(ctx))
-        
+
         elif ctx.condizione():
             # Parentesi: '(' condizione ')'
             return self.visit(ctx.condizione())
-        
+
         else:
-            raise ValueError(f"Tipo di condizione atomica non riconosciuto: {ctx.getText()}")
+            raise ValueError(
+                f"Tipo di condizione atomica non riconosciuto: {ctx.getText()}")
 
     def visitRelop(self, ctx: SaltinoParser.RelopContext):
         """Visita operatori di confronto."""

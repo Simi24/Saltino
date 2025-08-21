@@ -1,0 +1,11 @@
+def main() {
+    return fibonacci_tail(10, 0, 1)
+}
+
+def fibonacci_tail(n, a, b) {
+    if (n == 0) {
+        return a
+    } else {
+        return fibonacci_tail(n - 1, b, a + b)
+    }
+}

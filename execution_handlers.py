@@ -1,6 +1,6 @@
 """
-Execution handlers for different frame types in the Saltino interpreter.
-Contains the logic for handling each FrameType in the execution stack.
+Execution Handlers for the Saltino interpreter.
+Contains the logic for handling each FrameType.
 """
 
 from execution_frames import ExecutionFrame, FrameType
@@ -17,7 +17,8 @@ def execute_function_frame(frame: ExecutionFrame, interpreter):
 
     if not frame.state['body_executed']:
         # Eseguiamo il corpo della funzione
-        interpreter.push_frame(FrameType.BLOCK, function.body, frame.environment)
+        interpreter.push_frame(
+            FrameType.BLOCK, function.body, frame.environment)
     else:
         # Il corpo è stato eseguito, completiamo il frame
         result = frame.state.get('body_result')
@@ -125,18 +126,18 @@ def execute_binary_expression(frame: ExecutionFrame, interpreter):
         # Valutiamo l'operando sinistro
         if is_condition_node(expr.left):
             interpreter.push_frame(FrameType.CONDITION,
-                            expr.left, frame.environment)
+                                   expr.left, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            expr.left, frame.environment)
+                                   expr.left, frame.environment)
     elif current_index == 1:
         # Valutiamo l'operando destro
         if is_condition_node(expr.right):
             interpreter.push_frame(FrameType.CONDITION,
-                            expr.right, frame.environment)
+                                   expr.right, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            expr.right, frame.environment)
+                                   expr.right, frame.environment)
     else:
         # Entrambi gli operandi sono stati valutati
         left_value = operands_evaluated[0]
@@ -162,10 +163,10 @@ def execute_unary_expression(frame: ExecutionFrame, interpreter):
         # Valutiamo l'operando
         if is_condition_node(expr.operand):
             interpreter.push_frame(FrameType.CONDITION,
-                            expr.operand, frame.environment)
+                                   expr.operand, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            expr.operand, frame.environment)
+                                   expr.operand, frame.environment)
     else:
         # L'operando è stato valutato
         operand_value = operands_evaluated[0]
@@ -188,10 +189,10 @@ def execute_function_call_expression(frame: ExecutionFrame, interpreter):
         # Prima valutiamo l'espressione del callee (potrebbe essere una variabile che contiene una funzione)
         if is_condition_node(call.function):
             interpreter.push_frame(FrameType.CONDITION,
-                            call.function, frame.environment)
+                                   call.function, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            call.function, frame.environment)
+                                   call.function, frame.environment)
         frame.state['current_phase'] = 'evaluating_function'
         frame.state['arguments_to_evaluate'] = call.arguments[:]
         frame.state['arguments_evaluated'] = []
@@ -222,7 +223,8 @@ def execute_function_call_expression(frame: ExecutionFrame, interpreter):
         if is_condition_node(arg):
             interpreter.push_frame(FrameType.CONDITION, arg, frame.environment)
         else:
-            interpreter.push_frame(FrameType.EXPRESSION, arg, frame.environment)
+            interpreter.push_frame(FrameType.EXPRESSION,
+                                   arg, frame.environment)
         frame.state['current_phase'] = 'evaluating_arguments'
     elif not frame.state.get('function_called', False):
         # Tutti gli argomenti sono stati valutati, chiamiamo la funzione
@@ -236,7 +238,8 @@ def execute_function_call_expression(frame: ExecutionFrame, interpreter):
             )
 
         # Creiamo un nuovo ambiente per la funzione
-        function_env = interpreter._create_new_environment(interpreter.global_env)
+        function_env = interpreter._create_new_environment(
+            interpreter.global_env)
 
         # Binding dei parametri usando i nomi univoci dalla symbol table
         function_scope = interpreter.semantic_analyzer.get_node_info(
@@ -313,9 +316,9 @@ def execute_binary_condition(frame: ExecutionFrame, interpreter):
     if current_index == 0:
         # Valutiamo l'operando sinistro
         interpreter.push_frame(FrameType.CONDITION,
-                        condition.left, frame.environment)
+                               condition.left, frame.environment)
     elif current_index == 1:
-        # Short-circuit evaluation per and e or
+        # Valutazione short-circuit per and e or
         left_value = operands_evaluated[0]
 
         # Controllo di tipo per il primo operando
@@ -334,7 +337,7 @@ def execute_binary_condition(frame: ExecutionFrame, interpreter):
 
         # Valutiamo l'operando destro
         interpreter.push_frame(FrameType.CONDITION,
-                        condition.right, frame.environment)
+                               condition.right, frame.environment)
     else:
         # Entrambi gli operandi sono stati valutati
         left_value = operands_evaluated[0]
@@ -359,7 +362,7 @@ def execute_unary_condition(frame: ExecutionFrame, interpreter):
     if current_index == 0:
         # Valutiamo l'operando
         interpreter.push_frame(FrameType.CONDITION,
-                        condition.operand, frame.environment)
+                               condition.operand, frame.environment)
     else:
         # L'operando è stato valutato
         operand_value = operands_evaluated[0]
@@ -386,11 +389,11 @@ def execute_comparison_condition(frame: ExecutionFrame, interpreter):
     if current_index == 0:
         # Valutiamo l'operando sinistro
         interpreter.push_frame(FrameType.EXPRESSION,
-                        comparison.left, frame.environment)
+                               comparison.left, frame.environment)
     elif current_index == 1:
         # Valutiamo l'operando destro
         interpreter.push_frame(FrameType.EXPRESSION,
-                        comparison.right, frame.environment)
+                               comparison.right, frame.environment)
     else:
         # Entrambi gli operandi sono stati valutati
         left_value = operands_evaluated[0]
@@ -414,10 +417,10 @@ def execute_function_call_in_condition(frame: ExecutionFrame, interpreter):
         # Prima valutiamo l'espressione del callee
         if is_condition_node(call.function):
             interpreter.push_frame(FrameType.CONDITION,
-                            call.function, frame.environment)
+                                   call.function, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            call.function, frame.environment)
+                                   call.function, frame.environment)
         frame.state['current_phase'] = 'evaluating_function'
         frame.state['arguments_to_evaluate'] = call.arguments[:]
         frame.state['arguments_evaluated'] = []
@@ -447,7 +450,8 @@ def execute_function_call_in_condition(frame: ExecutionFrame, interpreter):
         if is_condition_node(arg):
             interpreter.push_frame(FrameType.CONDITION, arg, frame.environment)
         else:
-            interpreter.push_frame(FrameType.EXPRESSION, arg, frame.environment)
+            interpreter.push_frame(FrameType.EXPRESSION,
+                                   arg, frame.environment)
         frame.state['current_phase'] = 'evaluating_arguments'
     elif not frame.state.get('function_called', False):
         # Tutti gli argomenti sono stati valutati, chiamiamo la funzione
@@ -461,7 +465,8 @@ def execute_function_call_in_condition(frame: ExecutionFrame, interpreter):
             )
 
         # Creiamo un nuovo ambiente per la funzione
-        function_env = interpreter._create_new_environment(interpreter.global_env)
+        function_env = interpreter._create_new_environment(
+            interpreter.global_env)
 
         # Binding dei parametri
         function_scope = interpreter.semantic_analyzer.get_node_info(
@@ -509,7 +514,7 @@ def execute_if_frame(frame: ExecutionFrame, interpreter):
     if not frame.state['condition_evaluated']:
         # Valutiamo la condizione
         interpreter.push_frame(FrameType.CONDITION,
-                        if_stmt.condition, frame.environment)
+                               if_stmt.condition, frame.environment)
     elif not frame.state['branch_executed']:
         # La condizione è stata valutata, eseguiamo il ramo appropriato
         condition_result = frame.state['condition_result']
@@ -517,11 +522,11 @@ def execute_if_frame(frame: ExecutionFrame, interpreter):
         if condition_result:
             # Eseguiamo il ramo then
             interpreter.push_frame(FrameType.BLOCK,
-                            if_stmt.then_block, frame.environment)
+                                   if_stmt.then_block, frame.environment)
         elif if_stmt.else_block:
             # Eseguiamo il ramo else
             interpreter.push_frame(FrameType.BLOCK,
-                            if_stmt.else_block, frame.environment)
+                                   if_stmt.else_block, frame.environment)
         else:
             # Nessun ramo else, completiamo con None
             frame.result = None
@@ -540,10 +545,10 @@ def execute_assignment_frame(frame: ExecutionFrame, interpreter):
         # Valutiamo il valore da assegnare
         if is_condition_node(assignment.value):
             interpreter.push_frame(FrameType.CONDITION,
-                            assignment.value, frame.environment)
+                                   assignment.value, frame.environment)
         else:
             interpreter.push_frame(FrameType.EXPRESSION,
-                            assignment.value, frame.environment)
+                                   assignment.value, frame.environment)
     else:
         # Il valore è stato valutato, eseguiamo l'assegnamento usando il nome univoco
         value = frame.state['value']
@@ -558,30 +563,125 @@ def execute_assignment_frame(frame: ExecutionFrame, interpreter):
 
 
 def execute_return_frame(frame: ExecutionFrame, interpreter):
-    """Esegue un frame di return."""
+    """Esegue un frame di return con supporto TCO."""
     return_stmt = frame.node
 
-    if not frame.state.get('value_evaluated', False):
-        # Valutiamo il valore del return
-        if is_condition_node(return_stmt.value):
-            interpreter.push_frame(FrameType.CONDITION,
-                            return_stmt.value, frame.environment)
-        else:
+    # Controlla per l'Ottimizzazione delle Tail Call
+    is_tail_call = False
+    if isinstance(return_stmt.value, FunctionCall) and interpreter.semantic_analyzer:
+        is_tail_call = interpreter.semantic_analyzer.get_node_info(
+            return_stmt.value, 'is_potential_tail_call', False)
+
+    if is_tail_call:
+        # TCO: processo multi-fase
+        if interpreter.debug_mode:
+            print(
+                f"[TCO] Tail call rilevata nel return statement: {return_stmt.value}")
+        if 'tco_phase' not in frame.state:
+            # Fase 1: Valuta il callee (oggetto funzione)
+            frame.state['tco_phase'] = 'eval_callee'
+            frame.state['tail_call_function_value'] = None
+            frame.state['tail_call_evaluated_args'] = []
+            frame.state['tail_call_current_arg_index'] = 0
+            if interpreter.debug_mode:
+                print(
+                    f"[TCO] Fase 1: Valutazione del callee per tail call: {return_stmt.value.function}")
             interpreter.push_frame(FrameType.EXPRESSION,
-                            return_stmt.value, frame.environment)
+                                   return_stmt.value.function, frame.environment)
+        elif frame.state['tco_phase'] == 'eval_args':
+            # Wait for arguments to be evaluated in _handle_child_result
+            args = return_stmt.value.arguments
+            idx = frame.state['tail_call_current_arg_index']
+            if idx < len(args):
+                arg = args[idx]
+                if interpreter.debug_mode:
+                    print(f"[TCO] Valutazione argomento {idx}: {arg}")
+                if is_condition_node(arg):
+                    interpreter.push_frame(FrameType.CONDITION,
+                                           arg, frame.environment)
+                else:
+                    interpreter.push_frame(FrameType.EXPRESSION,
+                                           arg, frame.environment)
+            # else: gestito da tco_phase 'ready_to_tailcall' quando tutti gli argomenti sono pronti
+        elif frame.state['tco_phase'] == 'ready_to_tailcall':
+            if interpreter.debug_mode:
+                print(
+                    f"[TCO] Phase 3: Performing stack manipulation for tail call.")
+            # Phase 3: Stack manipulation for TCO
+            # Pop RETURN, BLOCK, FUNCTION_CALL frames
+            # (RETURN is current frame)
+            interpreter.pop_frame()  # Pop RETURN
+            # Pop BLOCK (function body)
+            if interpreter.execution_stack and interpreter.execution_stack[-1].frame_type == FrameType.BLOCK:
+                interpreter.pop_frame()
+            # Pop FUNCTION_CALL (current function)
+            if interpreter.execution_stack and interpreter.execution_stack[-1].frame_type == FrameType.FUNCTION_CALL:
+                interpreter.pop_frame()
+            # Prepare new environment for the tail call
+            function_obj = frame.state['tail_call_function_value']
+            args = frame.state['tail_call_evaluated_args']
+            function_env = interpreter._create_new_environment(
+                interpreter.global_env)
+            # Bind parameters using semantic info
+            if interpreter.semantic_analyzer:
+                function_scope = interpreter.semantic_analyzer.get_node_info(
+                    function_obj, 'scope')
+                if function_scope:
+                    for param, arg in zip(function_obj.parameters, args):
+                        try:
+                            param_info = function_scope.lookup_local(param)
+                            if param_info and param_info.kind == SymbolKind.PARAMETER:
+                                function_env.define_variable(
+                                    param_info.unique_name, arg)
+                                if interpreter.debug_mode:
+                                    print(
+                                        f"[TCO] Bound parameter {param} (unique: {param_info.unique_name}) = {arg}")
+                            else:
+                                raise SaltinoRuntimeError(
+                                    f"Parameter '{param}' not found in function scope")
+                        except ValueError:
+                            raise SaltinoRuntimeError(
+                                f"Parameter '{param}' not found in symbol table")
+                else:
+                    raise SaltinoRuntimeError(
+                        f"No scope information for function '{function_obj.name}'")
+            # Push new FUNCTION_CALL frame for the tail call
+            interpreter.tail_call_count += 1  # Count successful tail call optimization
+            if interpreter.debug_mode:
+                print(
+                    f"[TCO] Pushing new FUNCTION_CALL frame for tail call: {function_obj.name}({args})")
+            func_frame = interpreter.push_frame(
+                FrameType.FUNCTION_CALL, function_obj, function_env)
+            func_frame.state['function'] = function_obj
+            func_frame.state['body_executed'] = False
+            # Mark this frame as completed
+            frame.completed = True
+        else:
+            # Should not reach here
+            raise SaltinoRuntimeError("Invalid TCO phase in return frame")
     else:
-        # Il valore è stato valutato
-        return_value = frame.state['return_value']
+        # Logica originale (non-tail call)
+        if not frame.state.get('value_evaluated', False):
+            # Valutiamo il valore del return
+            if is_condition_node(return_stmt.value):
+                interpreter.push_frame(FrameType.CONDITION,
+                                       return_stmt.value, frame.environment)
+            else:
+                interpreter.push_frame(FrameType.EXPRESSION,
+                                       return_stmt.value, frame.environment)
+        else:
+            # Il valore è stato valutato
+            return_value = frame.state['return_value']
 
-        # Dobbiamo propagare il return fino al frame della funzione
-        # Rimuoviamo tutti i frame fino alla funzione
-        while interpreter.execution_stack:
-            current = interpreter.pop_frame()
-            if current.frame_type == FrameType.FUNCTION_CALL:
-                # Impostiamo il risultato e completiamo la funzione
-                current.result = return_value
-                current.completed = True
-                interpreter.execution_stack.append(current)
-                break
+            # Dobbiamo propagare il return fino al frame della funzione
+            # Rimuoviamo tutti i frame fino alla funzione
+            while interpreter.execution_stack:
+                current = interpreter.pop_frame()
+                if current.frame_type == FrameType.FUNCTION_CALL:
+                    # Impostiamo il risultato e completiamo la funzione
+                    current.result = return_value
+                    current.completed = True
+                    interpreter.execution_stack.append(current)
+                    break
 
-        frame.completed = True
+            frame.completed = True

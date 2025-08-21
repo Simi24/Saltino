@@ -1,0 +1,23 @@
+// Test di edge cases per tail recursion
+def main() {
+    // Test con parametri 0
+    zero_case = tail_edge_case(0, 42)
+    // Test con parametro negativo
+    negative_case = tail_edge_case(-5, 10)
+    // Test con caso base immediato
+    base_case = immediate_return(100)
+    
+    return zero_case + negative_case + base_case
+}
+
+def tail_edge_case(n, acc) {
+    if (n <= 0) {
+        return acc
+    } else {
+        return tail_edge_case(n - 1, acc + 1)
+    }
+}
+
+def immediate_return(value) {
+    return value
+}

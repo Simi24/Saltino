@@ -1,19 +1,27 @@
-// Test con valori booleani - usiamo confronti numerici 
-def main() {
+// Test con variabili booleane usando funzioni ausiliarie
+def test_true_variable() {
     true_val = true
-    false_val = false
-    
-    result = 0
     
     if (true_val) {
-        result = result + 1
+        return 1
+    } else {
+        return 0
     }
+}
+
+def test_false_variable() {
+    false_val = false
     
     if (false_val) {
-        result = result + 100  // Non eseguito
+        return 0  // Non eseguito
     } else {
-        result = result + 1
+        return 1
     }
+}
+
+def main() {
+    result1 = test_true_variable()   // 1
+    result2 = test_false_variable()  // 1
     
-    return result
+    return result1 + result2
 }

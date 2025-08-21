@@ -1,0 +1,15 @@
+def main() {
+  x1 = 1
+  x2 = 2
+  y1 = 3
+  y2 = 4
+  return dot_product(x1 :: x2 :: [], y1 :: y2 :: [])
+}
+
+def dot_product(xs, ys) {
+  if (xs == []) {
+    return 0
+  } else {
+    return (head(xs) * head(ys)) + dot_product(tail(xs), tail(ys))
+  }
+}

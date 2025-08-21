@@ -1,0 +1,8 @@
+def square(x) {
+  return x * x
+}
+
+def main() {
+  x = 2
+  return square(x)
+}
