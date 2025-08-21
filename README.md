@@ -1,112 +1,100 @@
-# LET25 Petta Paolo Simone
+# SaltinoInterpreter
 
-## Scelte progettuali
+## How to run the project
+To run the project, follow these steps:
 
-Come da email del 30 maggio:
-
-* utilizzo del linguaggio Python;
-* uso diretto di ANTLR per la generazione del parser;
-* parser di tipo iterativo;
-* ottimizzazione della ricorsione di coda tramite manipolazione esplicita dello stack nell’interprete, evitando quindi la crescita non necessaria dello stack di chiamate;
-* gestione approfondita degli errori, con segnalazione precisa e contestuale di ogni condizione anomala;
-* implementazione di un modulo che riconosce alcuni pattern ricorsivi trasformabili in chiamate in coda (tail-recursive), e li riscrive automaticamente in una forma ottimizzata, riducendo così l'overhead e prevenendo stack overflow nei casi ricorsivi profondi.
-
-Iscritto all'appello del 23/06/2025.
-
-## Come eseguire il progetto
-Per eseguire il progetto, seguire questi passaggi:
-1. Build e open il devcontainer di VSCode.
-2. Eseguire un programma .saltino con il comando:
+1. Build and open the VS Code devcontainer.
+2. Run a `.saltino` program with:
    ```bash
    python main.py <file.saltino>
    ```
-3. Per vedere le opzioni di esecuzione, eseguire:
+3. To see runtime options, run:
    ```bash
    python main.py --help
    ```
-4. Per eseguire i test, utilizzare:
+4. To run the test suite, use:
    ```bash
    python -m pytest
    ```
 
-## Architettura del Sistema
+## System architecture
 
-Il sistema è organizzato in componenti modulari con responsabilità specifiche:
+The system is organized into modular components with specific responsibilities:
 
-### Componenti Principali
+### Main components
 
-**1. Parser e Grammatica (`saltino_parser.py`, `Grammatica/`)**
-- Utilizza ANTLR4 per generare lexer, parser e visitor dalla grammatica `Saltino.g4`
-- Gestisce il parsing del codice sorgente con error listener personalizzati
-- Costruisce l'AST attraverso il pattern Visitor implementato in `ASTVisitor.py`
+1. Parser and grammar (`saltino_parser.py`, `Grammatica/`)
+   - Uses ANTLR4 to generate the lexer, parser and visitor from `Saltino.g4`.
+   - Parses source code with custom error listeners.
+   - Builds the AST using the Visitor pattern implemented in `ASTVisitor.py`.
 
-**2. Abstract Syntax Tree (`AST/`)**
-- `ASTNodes.py`: definisce la gerarchia dei nodi AST con pattern Visitor
-- `ASTsymbol_table.py`: implementa la symbol table con nomi univoci per gestire gli scope
-- `semantic_analyzer.py`: esegue l'analisi semantica decorando l'AST con informazioni sui tipi e scope e possibile chiamata tail-recursive
+2. Abstract Syntax Tree (`AST/`)
+   - `ASTNodes.py`: defines the AST node hierarchy and the Visitor pattern.
+   - `ASTsymbol_table.py`: implements the symbol table with unique names to manage scopes.
+   - `semantic_analyzer.py`: performs semantic analysis, annotating the AST with types, scopes and tail-call information.
 
-**3. Trasformatore Tail-Call (`tail_recursive_transformer.py`)**
-- Analizza l'AST per identificare pattern ricorsivi non tail-recursive
-- Trasforma automaticamente funzioni ricorsive in forme tail-recursive con accumulatori
-- Genera funzioni helper per mantenere la compatibilità dell'interfaccia originale
+3. Tail-call transformer (`tail_recursive_transformer.py`)
+   - Scans the AST to identify non-tail-recursive patterns that can be transformed.
+   - Automatically transforms suitable recursive functions into tail-recursive versions using accumulators.
+   - Generates helper functions while preserving the original function signatures.
 
-**4. Interprete Iterativo (`interpreter.py`)**
-- Classe principale `IterativeSaltinoInterpreter` che elimina la ricorsione attraverso uno stack esplicito
-- Utilizza frame di esecuzione (`ExecutionFrame`) per gestire lo stato di ogni operazione
-- Implementa dispatch table per gestori specializzati per ogni tipo di frame
+4. Iterative interpreter (`interpreter.py`)
+   - Main class `IterativeSaltinoInterpreter` that eliminates recursion by using an explicit execution stack.
+   - Uses execution frames (`ExecutionFrame`) to track the state of each operation.
+   - Implements a dispatch table with specialized handlers for each frame type.
 
-**5. Sistema di Frame di Esecuzione (`execution_frames.py`, `execution_handlers.py`)**
-- `FrameType`: definisce i tipi di frame (FUNCTION_CALL, BLOCK, EXPRESSION, CONDITION, IF_STATEMENT, ASSIGNMENT, RETURN)
-- Ogni frame mantiene stato specifico e ambiente di esecuzione associato
-- Handler specializzati gestiscono la logica di esecuzione per ogni tipo di frame
+5. Execution frame system (`execution_frames.py`, `execution_handlers.py`)
+   - `FrameType`: defines frame kinds (FUNCTION_CALL, BLOCK, EXPRESSION, CONDITION, IF_STATEMENT, ASSIGNMENT, RETURN).
+   - Each frame holds state and the associated execution environment.
+   - Specialized handlers implement the execution logic for each frame kind.
 
-**6. Ambiente di Esecuzione (`execution_environment.py`)**
-- Gestisce variabili e funzioni utilizzando nomi univoci dalla symbol table
-- Supporta scope nidificati con catena di parent environments
-- Integrazione con il semantic analyzer per risoluzione dei nomi
+6. Execution environment (`execution_environment.py`)
+   - Manages variables and functions using unique names provided by the symbol table.
+   - Supports nested scopes with parent environment chaining.
+   - Integrates with the semantic analyzer for name resolution.
 
-## Documentazione del Tail Call Transformer
+## Tail Call Transformer documentation
 
-Il sistema include un sofisticato trasformatore per l'ottimizzazione della ricorsione di coda:
+The system includes a transformer for optimizing tail recursion:
 
-### Documentazione Completa
-- **[`tail_recursive_transformer.md`](tail_recursive_transformer.md)**: Documentazione dettagliata in italiano del modulo di trasformazione
+### Full documentation
+- **`tail_recursive_transformer.md`**: detailed documentation of the transformer module (English translation included in this repo).
 
-### Caratteristiche Principali
-- **Pattern Recognition**: Riconosce automaticamente pattern ricorsivi trasformabili
-- **Sicurezza**: Rifiuta pattern che potrebbero alterare la semantica (es. costruzione liste con `::`)
-- **Preservazione Interfaccia**: Mantiene la signature originale delle funzioni
-- **Test Completi**: Suite di 24 test per validare tutti i pattern supportati
+### Key features
+ - Pattern recognition: automatically detects transformable recursive patterns.
+ - Safety: rejects patterns that could change semantics (for example list construction using `::`).
+ - Interface preservation: keeps original function signatures.
+ - Tests: a test suite verifies behavior and supported patterns.
 
-### Pattern Supportati
-- Fattoriale: `n * factorial(n-1)`
-- Somma numerica: `n + sum(n-1)`
-- Operazioni su liste: `1 + length(tail(lst))`
-- Dot product: `head(xs)*head(ys) + dot_product(tail(xs), tail(ys))`
+### Supported patterns
+ - Factorial: `n * factorial(n-1)`
+ - Numeric sum: `n + sum(n-1)`
+ - List operations: `1 + length(tail(lst))`
+ - Dot product: `head(xs)*head(ys) + dot_product(tail(xs), tail(ys))`
 
-### Flusso di Esecuzione
+### Execution flow
 
-**Fase 1: Parsing e Analisi**
-1. Il file sorgente viene analizzato dal parser ANTLR generando un parse tree
-2. L'`ASTVisitor` trasforma il parse tree in AST
-3. Il `TailCallTransformer` ottimizza le funzioni ricorsive identificando pattern specifici
-4. Il `SemanticAnalyzer` analizza l'AST, costruisce la symbol table e decora i nodi con informazioni semantiche
+Phase 1: Parsing and analysis
+1. The source file is parsed by the ANTLR parser and a parse tree is produced.
+2. The `ASTVisitor` converts the parse tree into an AST.
+3. The `TailCallTransformer` optimizes recursive functions by identifying specific patterns.
+4. The `SemanticAnalyzer` inspects the AST, builds the symbol table and annotates nodes with semantic information.
 
-**Fase 2: Esecuzione Iterativa**
-1. L'interprete registra tutte le funzioni nell'ambiente globale
-2. Viene cercata e invocata la funzione `main` con eventuali argomenti da input utente
-3. L'esecuzione procede attraverso un loop iterativo che gestisce uno stack di `ExecutionFrame`
-4. Ogni frame rappresenta un'operazione in corso (chiamata di funzione, blocco, espressione, etc.)
-5. Gli handler specializzati processano ogni frame secondo la sua tipologia
-6. I risultati vengono propagati attraverso lo stack fino al completamento
+Phase 2: Iterative execution
+1. The interpreter registers all functions in the global environment.
+2. It locates and invokes the `main` function with any provided input arguments.
+3. Execution proceeds via an iterative loop that manages a stack of `ExecutionFrame` objects.
+4. Each frame represents an ongoing operation (function call, block, expression, etc.).
+5. Specialized handlers process frames according to their type.
+6. Results propagate back through the stack until execution completes.
 
-**Gestione dello Stack**
-- Ogni operazione viene rappresentata da un frame nello stack di esecuzione
-- I frame mantengono stato specifico e puntano all'ambiente di esecuzione corrente
-- La gestione iterativa evita l'overflow dello stack di chiamate Python
-- Il sistema traccia statistiche di esecuzione (profondità massima, chiamate totali, tail call ottimizzate)
+Stack management
+ - Each operation is represented by a frame on the execution stack.
+ - Frames hold state and reference the current execution environment.
+ - The iterative approach prevents Python call-stack overflow.
+ - The runtime collects execution statistics (max depth, total calls, tail calls optimized).
 
-**Ottimizzazione Tail-Call**
-- Le chiamate tail-recursive vengono riconosciute durante l'esecuzione
-- Invece di creare nuovi frame, viene riutilizzato il frame corrente aggiornando parametri e ambiente
-- Questo previene la crescita dello stack per ricorsioni profonde
+Tail-call optimization
+ - Tail-recursive calls are detected at runtime.
+ - Instead of creating new frames, the interpreter reuses the current frame by updating parameters and environment.
+ - This prevents stack growth for deep recursions.

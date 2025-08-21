@@ -1,31 +1,32 @@
-# Trasformatore di Ricorsione Tail-Recursive
+# Tail-Recursive Transformer
 
-## Panoramica
+## Overview
 
-Il modulo `tail_recursive_transformer.py` implementa un trasformatore automatico che converte funzioni ricorsive non tail-recursive in forma tail-recursive ottimizzata. Questo trasformatore analizza l'Abstract Syntax Tree (AST) di un programma, identifica pattern ricorsivi specifici e li riscrive utilizzando funzioni helper con accumulatori per abilitare l'ottimizzazione tail call (TCO).
+The module `tail_recursive_transformer.py` implements an automatic transformer that converts non-tail-recursive functions into optimized tail-recursive form. The transformer inspects the program's Abstract Syntax Tree (AST), identifies specific recursive patterns and rewrites them using helper functions with accumulators to enable tail-call optimization (TCO).
 
-## Come Funziona
+## How it works
 
-### Architettura del Trasformatore
+### Transformer architecture
 
-Il trasformatore segue un approccio in due fasi:
+The transformer follows a two-phase approach:
 
-1. **Fase di Pattern Matching**: Analizza ogni funzione per identificare pattern ricorsivi trasformabili
-2. **Fase di Riscrittura AST**: Quando trova un pattern compatibile, genera:
-   - Una **funzione helper** tail-recursive con accumulatore
-   - Una **funzione wrapper** che mantiene la signature originale
+1. Pattern matching phase: examine each function to identify transformable recursive patterns.
+2. AST rewrite phase: when a compatible pattern is found, generate:
+   - a tail-recursive helper function with an accumulator
+   - a wrapper function that preserves the original signature
 
-### Struttura delle Funzioni Generate
+### Generated function structure
 
-Per ogni funzione ricorsiva trasformata, il sistema genera:
+For each transformed recursive function the system produces:
 
 ```
-funzione_originale(param) -> funzione_originale_tc_helper(param, acc)
-                         -> funzione_originale(param) [wrapper]
+original_function(param) -> original_function_tc_helper(param, acc)
+                         -> original_function(param) [wrapper]
 ```
 
-**Esempio con fattoriale:**
-```
+Example — factorial:
+
+```saltino
 factorial(n) {
     if (n <= 1) {
         return 1;
@@ -35,8 +36,9 @@ factorial(n) {
 }
 ```
 
-Viene trasformato in:
-```
+Is transformed into:
+
+```saltino
 factorial_tc_helper_1(n, acc) {
     if (n <= 1) {
         return acc;
@@ -50,41 +52,42 @@ factorial(n) {
 }
 ```
 
-## Pattern Riconosciuti e Trasformabili
+## Recognized and transformable patterns
 
-### Pattern Base Supportato
+### Supported base pattern
 
-Il trasformatore riconosce funzioni che seguono questo schema:
+The transformer recognizes functions following this scheme:
 
-```
-nome_funzione(parametro1 [, parametro2]) {
-    if (parametro1 == valore_base) {
-        return valore_iniziale;
+```saltino
+function_name(param1 [, param2]) {
+    if (param1 == base_value) {
+        return initial_value;
     } else {
-        return parametro1 operatore nome_funzione(modifica_parametro1 [, modifica_parametro2]);
+        return param1 operator function_name(modified_param1 [, modified_param2]);
     }
 }
 ```
 
-### Criteri di Validazione
+### Validation criteria
 
-Una funzione è trasformabile se soddisfa **tutti** questi criteri:
+A function is transformable only if it meets all of these criteria:
 
-1. **Numero di parametri**: Esattamente 1 o 2 parametri
-2. **Struttura del corpo**: Un singolo statement (tipicamente if-statement)
-3. **Caso base**: Condizione di confronto con valore costante
-4. **Valore di ritorno base**: Letterale costante (intero, booleano, identificatore)
-5. **Caso ricorsivo**: Espressione binaria con chiamata ricorsiva
-6. **Operatore supportato**: Qualsiasi operatore eccetto `::` (costruzione lista)
-7. **Posizione chiamata ricorsiva**: Uno dei due operandi dell'espressione binaria
-8. **Argomenti della chiamata**: Modifiche valide dei parametri originali
+1. Number of parameters: exactly 1 or 2
+2. Body structure: a single statement (typically an if-statement)
+3. Base case: comparison with a constant value
+4. Base return value: a literal constant (integer, boolean, or identifier)
+5. Recursive case: a binary expression containing the recursive call
+6. Supported operator: any operator except `::` (list construction)
+7. Recursive call position: one of the two operands of the binary expression
+8. Call arguments: valid transformations of the original parameters
 
-### Esempi di Pattern Trasformabili
+### Examples of transformable patterns
 
-#### 1. Funzioni Aritmetiche a Un Parametro
+1) Single-parameter arithmetic functions
 
-**Fattoriale:**
-```
+Factorial:
+
+```saltino
 factorial(n) {
     if (n <= 1) {
         return 1;
@@ -93,12 +96,13 @@ factorial(n) {
     }
 }
 ```
-- **Operatore**: `*` (moltiplicazione)
-- **Accumulatore iniziale**: `1`
-- **Trasformazione**: `acc * n` ad ogni iterazione
+- Operator: `*` (multiplication)
+- Initial accumulator: `1`
+- Transformation: `acc * n` on each iteration
 
-**Somma (da 1 a n):**
-```
+Sum from 1 to n:
+
+```saltino
 sum(n) {
     if (n <= 0) {
         return 0;
@@ -107,14 +111,15 @@ sum(n) {
     }
 }
 ```
-- **Operatore**: `+` (addizione)
-- **Accumulatore iniziale**: `0`
-- **Trasformazione**: `acc + n` ad ogni iterazione
+- Operator: `+`
+- Initial accumulator: `0`
+- Transformation: `acc + n`
 
-#### 2. Funzioni su Liste a Un Parametro
+2) Single-parameter list functions
 
-**Lunghezza lista:**
-```
+Length of a list:
+
+```saltino
 length(lst) {
     if (lst == []) {
         return 0;
@@ -123,12 +128,13 @@ length(lst) {
     }
 }
 ```
-- **Operatore**: `+` (addizione)
-- **Accumulatore iniziale**: `0`
-- **Trasformazione**: `acc + 1` ad ogni iterazione
+- Operator: `+`
+- Initial accumulator: `0`
+- Transformation: `acc + 1`
 
-**Somma elementi lista:**
-```
+Sum of list elements:
+
+```saltino
 sum_list(lst) {
     if (lst == []) {
         return 0;
@@ -137,14 +143,15 @@ sum_list(lst) {
     }
 }
 ```
-- **Operatore**: `+` (addizione)
-- **Accumulatore iniziale**: `0`
-- **Trasformazione**: `acc + head(lst)` ad ogni iterazione
+- Operator: `+`
+- Initial accumulator: `0`
+- Transformation: `acc + head(lst)`
 
-#### 3. Funzioni a Due Parametri
+3) Two-parameter functions
 
-**Dot Product (prodotto scalare):**
-```
+Dot product:
+
+```saltino
 dot_product(xs, ys) {
     if (xs == []) {
         return 0;
@@ -153,18 +160,19 @@ dot_product(xs, ys) {
     }
 }
 ```
-- **Operatore**: `+` (addizione)
-- **Accumulatore iniziale**: `0`
-- **Trasformazione**: `acc + (head(xs) * head(ys))` ad ogni iterazione
+- Operator: `+`
+- Initial accumulator: `0`
+- Transformation: `acc + (head(xs) * head(ys))`
 
-### Pattern NON Trasformabili
+### Patterns that are NOT transformable
 
-#### 1. Costruzione di Liste con Operatore `::`
+1) List construction using the `::` operator
 
-**Motivo dell'esclusione**: Le funzioni che utilizzano l'operatore `::` per costruire liste presentano problemi di correttezza semantica se trasformate con un semplice accumulatore.
+Reason: functions that build lists with `::` cannot be safely transformed with a simple accumulator without changing semantics.
 
-**Esempio problematico:**
-```
+Problematic example:
+
+```saltino
 append(xs, ys) {
     if (xs == []) {
         return ys;
@@ -174,127 +182,109 @@ append(xs, ys) {
 }
 ```
 
-**Problema**: La trasformazione con accumulatore invertirebbe l'ordine degli elementi:
-- `append([1,2], [3,4])` dovrebbe restituire `[1,2,3,4]`
-- La versione tail-recursive ingenua restituirebbe `[2,1,3,4]`
+Issue: a naive accumulator-based transformation would reverse element order:
+- `append([1,2], [3,4])` should return `[1,2,3,4]`
+- A naive tail-recursive version would return `[2,1,3,4]`
 
-**Soluzione futura**: Questi pattern richiedono tecniche avanzate come continuation-passing style.
+Future solution: these patterns require advanced techniques such as continuation-passing style.
 
-#### 2. Altri Pattern Non Supportati
+2) Other unsupported patterns
 
-- Funzioni con più di 2 parametri
-- Funzioni con corpo complesso (più statement)
-- Funzioni con multiple chiamate ricorsive
-- Funzioni con chiamate ricorsive in posizioni non-operando
+- Functions with more than 2 parameters
+- Functions with complex bodies (multiple statements)
+- Functions with multiple recursive calls
+- Recursive calls in non-operand positions
 
-## Vantaggi della Trasformazione
+## Benefits of the transformation
 
-### 1. Ottimizzazione delle Prestazioni
-- **Eliminazione stack overflow**: Le funzioni tail-recursive possono essere ottimizzate dal runtime
-- **Utilizzo memoria costante**: O(1) invece di O(n) per la profondità di ricorsione
-- **Migliori prestazioni**: Meno overhead di chiamate di funzione
+### Performance improvements
+- Avoids stack overflow: tail-recursive functions can be optimized by the runtime.
+- Constant memory usage: O(1) instead of O(n) for recursion depth.
+- Better performance: reduced function-call overhead.
 
-### 2. Sicurezza e Robustezza
-- **Pattern matching rigoroso**: Solo trasformazioni semanticamente sicure
-- **Preservazione della signature**: L'interfaccia pubblica rimane invariata
-- **Compatibilità**: Codice esistente continua a funzionare senza modifiche
+### Safety and robustness
+- Conservative pattern matching: only semantically safe transformations are applied.
+- Signature preservation: public interfaces remain unchanged.
+- Backwards compatible: existing code continues to work as before.
 
-## Limitazioni Attuali
+## Current limitations
 
-### 1. Pattern Limitati
-- Solo pattern ricorsivi semplici con un'unica chiamata ricorsiva
-- Esclusione di costruzioni di lista complesse
-- Supporto limitato a 1-2 parametri
+1) Limited pattern coverage
+- Only simple recursive patterns with a single recursive call are handled.
+- Complex list constructions are excluded.
+- Limited to functions with 1 or 2 parameters.
 
-### 2. Operatori Esclusi
-- **Operatore `::`**: Richiede continuation-passing style
-- Pattern complessi che modificano strutture dati in modo non-cumulativo
-- Tutti gli operatori non commutativi o non associativi
+2) Excluded operators
+- The `::` operator is excluded (needs continuation-passing style).
+- Patterns that update data non-cumulatively are not supported.
 
-### 3. Analisi Statica
-- Nessuna analisi del flusso di controllo avanzata
-- Nessuna ottimizzazione inter-procedurale
+3) Static analysis
+- No advanced control-flow analysis is performed.
+- No inter-procedural optimizations are applied.
 
-## Esempi di Utilizzo
+## Usage examples
 
-### Trasformazione Programmatica
+Programmatic transformation
 
 ```python
 from tail_recursive_transformer import TailCallTransformer
 
-# Crea un'istanza del trasformatore
+# Create transformer instance
 transformer = TailCallTransformer()
 
-# Trasforma un programma AST
+# Transform a program AST
 transformed_program = transformer.transform_program(original_program)
 
-# Il programma trasformato contiene le funzioni originali 
-# (ora wrapper) + le funzioni helper generate
+# The transformed program contains the original functions
+# (now wrappers) plus the generated helper functions.
 ```
 
-### Analisi di Funzioni
+Function analysis
 
 ```python
 from tail_recursive_transformer import analyze_function_pattern
 
-# Analizza se una funzione può essere trasformata
+# Analyze whether a function can be transformed
 analysis = analyze_function_pattern(function_ast)
-
-print(f"Può essere trasformata: {analysis['can_transform']}")
+print(f"Transformable: {analysis['can_transform']}")
 if not analysis['can_transform']:
-    print(f"Motivo: {analysis['reason']}")
+    print(f"Reason: {analysis['reason']}")
 ```
 
-## Testing e Validazione
+## Testing and validation
 
-### Suite di Test Completa
+### Test suite
 
-Il trasformatore è accompagnato da una suite di test completa (`test_tail_call_transformer.py`) che verifica:
+The transformer is accompanied by a test suite (`test_tail_call_transformer.py`) that covers:
 
-#### Test di Pattern Recognition
-- **Fattoriale semplice**: Verifica il riconoscimento del pattern `n * factorial(n-1)`
-- **Somma numerica**: Verifica il riconoscimento del pattern `n + sum(n-1)`
-- **Lunghezza lista**: Verifica il riconoscimento del pattern `1 + length(tail(lst))`
-- **Somma lista**: Verifica pattern a due parametri `sum_list(tail(lst), acc + head(lst))`
-- **Prodotto lista**: Verifica pattern di moltiplicazione `product_list(tail(lst), acc * head(lst))`
-- **Dot product**: Verifica pattern con due liste `dot_product(tail(xs), tail(ys))`
+- Pattern recognition tests (factorial, sum, list length, sum_list, product_list, dot_product).
+- Transformation tests (helper generation, wrapper preservation, semantic correctness).
+- Rejection tests (non-recursive functions, too many parameters, unsupported patterns).
 
-#### Test di Trasformazione
-- **Generazione funzioni helper**: Verifica che vengano create funzioni con accumulatori
-- **Preservazione wrapper**: Verifica che le funzioni wrapper mantengano la signature originale
-- **Correttezza semantica**: Verifica che il comportamento rimanga invariato
+### Pattern analysis
 
-#### Test di Rejezione
-- **Funzioni non ricorsive**: Verifica che funzioni senza ricorsione non vengano trasformate
-- **Troppi parametri**: Verifica rejezione di funzioni con più di 2 parametri
-- **Pattern non supportati**: Verifica che pattern complessi vengano ignorati
-
-### Analisi dei Pattern
-
-La funzione `analyze_function_pattern()` fornisce diagnostica dettagliata:
+`analyze_function_pattern()` provides diagnostic information:
 
 ```python
 from tail_recursive_transformer import analyze_function_pattern
-
-# Esempio di analisi
 analysis = analyze_function_pattern(function_ast)
-print(f"Trasformabile: {analysis['can_transform']}")
+print(f"Transformable: {analysis['can_transform']}")
 if analysis['can_transform']:
     print(f"Pattern: {analysis['pattern_info']}")
 else:
-    print(f"Motivo esclusione: {analysis['reason']}")
+    print(f"Exclusion reason: {analysis['reason']}")
 ```
 
-### Risultati Test Attuali
+### Current test status
 
-Tutti i 24 test nella suite passano con successo, coprendo:
-- 7 test di riconoscimento pattern
-- 6 test di trasformazione AST
-- 4 test di rejezione pattern non validi
-- 7 test di analisi diagnostica
+All 24 tests in the suite pass, covering:
+- 7 pattern recognition tests
+- 6 AST transformation tests
+- 4 rejection tests for unsupported patterns
+- 7 diagnostic analysis tests
 
-## Conclusioni
+## Conclusion
 
-Il trasformatore di ricorsione tail-recursive rappresenta un approccio pragmatico all'ottimizzazione automatica del codice ricorsivo. Pur con le sue limitazioni attuali, fornisce un miglioramento significativo delle prestazioni per una classe importante di funzioni ricorsive, mantenendo la correttezza semantica e la compatibilità del codice esistente.
+The tail-recursive transformer offers a pragmatic approach to automatically optimizing recursive code. Despite current limitations, it provides meaningful performance improvements for a useful class of recursive functions while preserving semantic correctness and API compatibility.
 
-L'architettura modulare e estensibile del trasformatore permette future estensioni per supportare pattern più complessi e tecniche di ottimizzazione più avanzate.
+Its modular and extensible design allows future extensions to support more complex patterns and advanced optimization techniques.
